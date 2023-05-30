@@ -46,7 +46,7 @@ namespace SampleInjected
 			VirtualFree(arg.Picture, 0, 0x8000);
 
 			ApplicationConfiguration.Initialize();
-			
+
 			using var ms = new MemoryStream(pic);
 			Image img = Image.FromStream(ms);
 
