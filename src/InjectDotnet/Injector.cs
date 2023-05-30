@@ -45,7 +45,6 @@ namespace InjectDotnet
 };
 			}
 		}
-
 		/// <summary>
 		/// Inject a .NET Core dll into an Win32 or Win64 native process.
 		/// </summary>
