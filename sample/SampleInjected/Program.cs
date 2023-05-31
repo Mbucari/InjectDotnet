@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,17 +9,16 @@ namespace SampleInjected
 {
 	struct Argument
 	{
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 		public IntPtr Title;
 		public IntPtr Text;
 		public IntPtr Picture;
 		public int pic_sz;
+#pragma warning restore CS0649
 	}
 
 	internal unsafe static class Program
 	{
-		[DllImport("kernel32.dll")]
-		static extern bool VirtualProtect(IntPtr handle, int size, uint newProtect, uint* oldProtect);
-
 		[DllImport("kernel32", CharSet = CharSet.Unicode, ExactSpelling = true)]
 		public static extern bool VirtualFree(IntPtr lpAddress, int dwSize, uint dwFreeType);
 
@@ -62,7 +60,7 @@ namespace SampleInjected
 			delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook = &WriteFile_hook;
 
 			nint orig;
-			if (HookImport("kernel32.dll", "WriteFile", (nint)hook, &orig))
+			if (HookImport.InstallHook("kernel32.dll", "WriteFile", (nint)hook, &orig))
 				WriteFile_original = (delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)orig;
 
 			Application.Run(form);
@@ -103,66 +101,8 @@ namespace SampleInjected
 			return result;
 		}
 
-		/// <summary>
-		/// Replace an imported function with a delegate
-		/// </summary>
-		/// <param name="moduleName">Name of the imported library containing the function to hook</param>
-		/// <param name="functionName">Name of the function to hook</param>
-		/// <param name="hookFunction">Pointer to a manager delegate that will be called instead of <paramref name="functionName"/></param>
-		/// <param name="originalFunction">Pointer to the function being hooked</param>
-		/// <returns>Success</returns>
-		private static bool HookImport(string moduleName, string functionName, nint hookFunction, nint* originalFunction)
-		{
-			var mainModule = Process.GetCurrentProcess().MainModule;
-
-			if (mainModule?.FileName is null
-				|| !PeNet.PeFile.TryParse(mainModule.FileName, out var pe)
-				|| pe!.ImageImportDescriptors is null)
-				return false;
-
-			nint hModule = mainModule.BaseAddress;
-
-			//Iterate over all modules in the program's import table
-			foreach (var des in pe.ImageImportDescriptors)
-			{
-				//Import name
-				var libName = new string((sbyte*)(hModule + des.Name));
-
-				if (libName.Equals(moduleName, StringComparison.OrdinalIgnoreCase))
-				{
-					var pOT = (nint*)(hModule + des.OriginalFirstThunk);
-					var pImportTableEntry = (nint*)(hModule + des.FirstThunk);
-
-					//Iterate over all imported functions in the library
-					while (*pOT > 0)
-					{
-						var funcName = new string((sbyte*)(hModule + *pOT + 2));
-
-						if (funcName.Equals(functionName, StringComparison.OrdinalIgnoreCase))
-						{
-							*originalFunction = *pImportTableEntry;
-
-							uint oldProtect;
-							//Change IAT protection to read-write
-							VirtualProtect((nint)pImportTableEntry, sizeof(nint), 4u, &oldProtect);
-							//Replace the original function pointer in the IAT with the hook pointer;
-							*pImportTableEntry = hookFunction;
-							//Restore IAT's protection
-							VirtualProtect((nint)pImportTableEntry, sizeof(nint), oldProtect, &oldProtect);
-							return true;
-						}
-
-						pOT++;
-						pImportTableEntry++;
-					}
-					return false;
-				}
-			}
-			return false;
-		}
-
 		[STAThread]
-		static void Main()
+		static unsafe void Main()
 		{
 			ApplicationConfiguration.Initialize();
 			Application.Run(new Form1());
