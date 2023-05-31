@@ -11,26 +11,28 @@ namespace SampleInjected
 		/// <summary>
 		/// Replace an imported function with a delegate
 		/// </summary>
-		/// <param name="moduleName">Name of the imported library containing the function to hook</param>
-		/// <param name="functionName">Name of the function to hook</param>
-		/// <param name="hookFunction">Pointer to a manager delegate that will be called instead of <paramref name="functionName"/></param>
+		/// <param name="moduleToHook">The <see cref="ProcessModule"/> in the current process whose import table will be hooked, or <see cref="Process.MainModule"/> if null.</param>
+		/// <param name="importModuleName">Name of the imported library containing the function to hook</param>
+		/// <param name="importFunctionName">Name of the function to hook</param>
+		/// <param name="hookFunction">Pointer to a manager delegate that will be called instead of <paramref name="importFunctionName"/></param>
 		/// <param name="originalFunction">Pointer to the function being hooked</param>
 		/// <returns>Success</returns>
 		public static bool InstallHook(
-			string moduleName,
-			string functionName,
+			ProcessModule? moduleToHook,
+			string importModuleName,
+			string importFunctionName,
 			nint hookFunction,
 			nint* originalFunction)
 		{
-			var mainModule = Process.GetCurrentProcess().MainModule;
+			moduleToHook ??= Process.GetCurrentProcess().MainModule;
 
-			if (mainModule is null ||
-				GetImports(mainModule) is not List<Import> imports ||
+			if (moduleToHook is null ||
+				GetModuleImports(moduleToHook) is not List<Import> imports ||
 				imports.Count == 0) return false;
 
 			var toReplace = imports.Where(i =>
-				i.Library.Equals(moduleName, StringComparison.OrdinalIgnoreCase) &&
-				i.Function?.Equals(functionName, StringComparison.OrdinalIgnoreCase) is true).ToList();
+				i.Library.Equals(importModuleName, StringComparison.OrdinalIgnoreCase) &&
+				i.Function?.Equals(importFunctionName, StringComparison.OrdinalIgnoreCase) is true).ToList();
 
 			var didReplace = false;
 
@@ -39,7 +41,7 @@ namespace SampleInjected
 			//(because they're the same function so the function's addresses will be the same)
 			foreach (var r in toReplace)
 			{
-				var pImportTableEntry = (nint*)(mainModule.BaseAddress + (int)r.IAT_RVA);
+				var pImportTableEntry = (nint*)(moduleToHook.BaseAddress + (int)r.IAT_RVA);
 
 				*originalFunction = *pImportTableEntry;
 
@@ -56,9 +58,9 @@ namespace SampleInjected
 		}
 
 		/// <summary>
-		/// Geta all imported functions from the main executable of this process.
+		/// Geta all imported functions of a <see cref="Process.MainModule"/> in this process.
 		/// </summary>
-		/// <param name="mainModule"><see cref="Process.MainModule"/></param>
+		/// <param name="procModule"><see cref="Process.MainModule"/></param>
 		/// <remarks>
 		/// When the PE is loaded, FirstThunk (aka Import Address Table) is overwritten with
 		/// the addresses of the symbols that are being imported, which is why import name RVAs
@@ -68,18 +70,20 @@ namespace SampleInjected
 		/// Contain an Import Lookup Table. The only way to guarantee that imported function
 		/// names can be resolved is by reading from the PE file's Import Address Table.
 		/// </remarks>
-		/// <returns>If successful, a list of all imported functions</returns>
-		public static List<Import>? GetImports(ProcessModule? mainModule)
+		/// <returns>If successful, a list of all functions imported by <paramref name="procModule"/></returns>
+		public static List<Import>? GetModuleImports(ProcessModule? procModule)
 		{
-			if (mainModule?.FileName is null) return null;
+			if (procModule?.FileName is null) return null;
 
-			using var peFile = new BinaryReader(File.OpenRead(mainModule.FileName));
+			using var peFile = new BinaryReader(File.Open(procModule.FileName, FileMode.Open, FileAccess.Read, FileShare.Read));
 
 			var list = new List<Import>();
-			byte* hModule = (byte*)mainModule.BaseAddress;
+			byte* hModule = (byte*)procModule.BaseAddress;
 
-			ReadDirectoriesAndSections(mainModule.BaseAddress, out var dir, out var secs);
-			var importDir = dir[1]; //Import directory is always index 1
+			ReadDirectoriesAndSections(procModule.BaseAddress, out var imageDataDirs, out var imageSections);
+			var importDir = imageDataDirs[1]; //Import directory is always index 1
+
+			if (importDir.Size == 0) return null; //Modles has no imports
 
 			var importDescriptors =
 				new Span<ImageImportDescriptor>(
@@ -99,20 +103,21 @@ namespace SampleInjected
 				//PE section containing the IAT for this import descriptor.
 				//The import directory is contiguous and must be inside a single section.
 				//Each import's Import Address Table is contiguous and must be inside a single section.
-				//However, each import may store its IAT in a different section.
+				//However, the IATs for all imports are non-configuous and may be storeed in different sections.
 				var importSection =
-					secs.Single(s =>
+					imageSections.Single(s =>
 						imgImpDes.FirstThunk >= s.VirtualAddress &&
 						imgImpDes.FirstThunk < s.VirtualAddress + s.VirtualSize);
 
 				//RVA of the first import address for this import descriptor
 				var iatEntryRVA = imgImpDes.FirstThunk;
 
+				//End of IAT is denoted by a null entry
 				while (*(nint*)(hModule + iatEntryRVA) != 0)
 				{
 					//Read the IAT entry from the PE file
 					peFile.BaseStream.Position =
-						iatEntryRVA + importSection.PointerToRawData - importSection.VirtualAddress;
+						iatEntryRVA - importSection.VirtualAddress + importSection.PointerToRawData;
 
 					long entry = Environment.Is64BitProcess ? peFile.ReadInt64() : peFile.ReadInt32();
 
@@ -156,6 +161,7 @@ namespace SampleInjected
 		{
 			byte* hModule = (byte*)baseAddress;
 
+			//Last field in IMAGE_DOS_HEADER
 			var lfanew = *(int*)(hModule + 0x3c);
 
 			//Skip PE\0\0 signature and IMAGE_FILE_HEADER.Machine

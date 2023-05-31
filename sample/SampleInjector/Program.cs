@@ -19,8 +19,7 @@ namespace SampleInjector
 
 			var target = notepads.Length == 0 ? Process.Start("notepad.exe") : notepads[0];
 
-			var picFile = @"..\..\..\SampleInjector\dotnet.png";
-			var picBytes = File.ReadAllBytes(picFile);
+			var picBytes = File.ReadAllBytes("dotnet.png");
 
 			//Arguments to pass to SampleInjected
 			//SampleInjected is responsible from loading this struct from unmanaged

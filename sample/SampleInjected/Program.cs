@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -56,11 +57,11 @@ namespace SampleInjected
 			form.pictureBox1.Image = img;
 
 
-			//Hook native function kernel32.WriteFile
+			//Hook kernel32.WriteFile in the main module's import table
 			delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook = &WriteFile_hook;
 
 			nint orig;
-			if (HookImport.InstallHook("kernel32.dll", "WriteFile", (nint)hook, &orig))
+			if (HookImport.InstallHook(null, "kernel32.dll", "WriteFile", (nint)hook, &orig))
 				WriteFile_original = (delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)orig;
 
 			Application.Run(form);
@@ -68,6 +69,8 @@ namespace SampleInjected
 			return 0;
 		}
 
+		//Stdcall is the default export calling convention on x86 platforms. x64 only supports
+		//fastcall, so all calling conventions map to fastcall when compiled for x64.
 		static delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> WriteFile_original;
 
 		[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
@@ -104,6 +107,8 @@ namespace SampleInjected
 		[STAThread]
 		static unsafe void Main()
 		{
+			var mod = Process.GetCurrentProcess().Modules.Cast<ProcessModule>().ElementAt(4);
+			var imports = HookImport.GetModuleImports(mod);
 			ApplicationConfiguration.Initialize();
 			Application.Run(new Form1());
 		}
