@@ -116,11 +116,12 @@ public static class Injector
 		if (!File.Exists(dllToInject))
 			throw new ArgumentException($"{nameof(dllToInject)} file not found");
 
-		var runtimes = JsonNode.Parse(File.ReadAllText(runtimeconfig))?["runtimeOptions"]?["frameworks"] as JsonArray;
+		if (JsonNode.Parse(File.ReadAllText(runtimeconfig))?["runtimeOptions"] is not JsonNode options)
+			return null;
 
-		if (runtimes?.FirstOrDefault(r => r?["name"]?.GetValue<string>() == "Microsoft.NETCore.App")?["version"]?.GetValue<string>() is not string verStr
-			|| !Version.TryParse(verStr, out var runtimeVersion))
-			throw new InvalidProgramException($"{nameof(runtimeconfig)} contains no frameworks");
+		Version? runtimeVersion
+			= tryGetVersion(options["framework"])
+			?? options["frameworks"]?.AsArray().Select(tryGetVersion).FirstOrDefault(v => v is not null);
 
 		if (GetInstalledFrameworks().FirstOrDefault(v => v >= runtimeVersion) is not Version installedRuntimeVer)
 			throw new DirectoryNotFoundException($"Could not find installed Microsoft.NETCore.App runtime with version >= {runtimeVersion:3}");
@@ -151,6 +152,12 @@ public static class Injector
 		var loader = target.WriteMemory(DOTNET_LOADER_ASM, MemoryProtection.Execute);
 
 		return target.Call(loader, param, waitForReturn);
+
+		static Version? tryGetVersion(JsonNode? framework)
+			=> framework?["name"]?.GetValue<string>() == "Microsoft.NETCore.App" &&
+				framework["version"]?.GetValue<string>() is string vStr &&
+				Version.TryParse(vStr, out var v)
+				? v : null;
 	}
 
 	/// <summary>
