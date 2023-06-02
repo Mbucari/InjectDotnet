@@ -115,6 +115,6 @@ public class ImportHook : INativeHook
 	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 	public override string ToString()
 	{
-		return $"{HookedModule.ModuleName ?? HookedModule.FileName ?? "[MODULE]"}<{ImportedModuleName.RemoveDllExtension()}.{ImportedFunctionName}()>";
+		return $"{HookedModule.ModuleName ?? HookedModule.FileName ?? "[MODULE]"}<{ImportedModuleName.RemoveDllExtension()}.{ImportedFunctionName}>";
 	}
 }

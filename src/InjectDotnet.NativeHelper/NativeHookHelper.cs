@@ -12,7 +12,7 @@ unsafe public static class NativeHookHelper
 	/// </summary>
 	/// <param name="import">The import to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
-	/// with the same parmeter signature as the native import</param>
+	/// with the same parameter signature as the native import</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Hook(this NativeImport? import, nint hook)
 	{
@@ -25,7 +25,7 @@ unsafe public static class NativeHookHelper
 	/// </summary>
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
-	/// with the same parmeter signature as the native export</param>
+	/// with the same parameter signature as the native export</param>
 	/// <remarks>
 	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
 	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
@@ -56,7 +56,7 @@ unsafe public static class NativeHookHelper
 	/// <summary>
 	/// Get a function imported by <paramref name="procModule"/>
 	/// </summary>
-	/// <param name="procModule">The module which importsthe function</param>
+	/// <param name="procModule">The module which imports the function</param>
 	/// <param name="libraryName">Name of the imported library</param>
 	/// <param name="importedFunctionName">Name of the function imported from <paramref name="libraryName"/></param>
 	/// <returns>The matched <see cref="NativeImport"/></returns>
@@ -79,7 +79,7 @@ unsafe public static class NativeHookHelper
 	/// Get <see cref="ProcessModule"/>s by <see cref="ProcessModule.ModuleName"/> or <see cref="ProcessModule.FileName"/>
 	/// </summary>
 	/// <param name="proc">The process whose modules are searched for matches</param>
-	/// <param name="libraryName">The name for filename of the module. Case insensative and file extension is ignored.</param>
+	/// <param name="libraryName">The name for filename of the module. Case insensitive and file extension is ignored.</param>
 	/// <returns>All modules with matching names</returns>
 	public static IEnumerable<ProcessModule> GetModulesByName(this Process proc, string libraryName)
 	{
@@ -93,12 +93,6 @@ unsafe public static class NativeHookHelper
 				m.FileName?.RemoveDllExtension().EqualsIgnoreCase(libraryName) is true);
 	}
 
-	internal static bool EqualsIgnoreCase(this string str, string other)
-		=> str.Equals(other, StringComparison.OrdinalIgnoreCase);
-
-	internal static string RemoveDllExtension(this string libName)
-		=> libName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? libName[..^4] : libName;
-
 	/// <summary>
 	/// Geta all functions imported by <paramref libraryName="procModule"/> in this process.
 	/// </summary>
@@ -107,7 +101,7 @@ unsafe public static class NativeHookHelper
 	/// When the PE is loaded, FirstThunk (aka Import Address Table) is overwritten with
 	/// the addresses of the symbols that are being imported, which is why import libraryName RVAs
 	/// must be read from the PE file and not from memory. FunctionName RVAs could be located in
-	/// memory by using OriginalFirstThunk (aka Import Lookup Table) (which is idential to
+	/// memory by using OriginalFirstThunk (aka Import Lookup Table) (which is identical to
 	/// FirstThunk but is not overwritten when the PE is loaded); however, not all PE files
 	/// Contain an Import Lookup Table. The only way to guarantee that imported function
 	/// names can be resolved is by reading from the PE file's Import Address Table.
@@ -120,7 +114,7 @@ unsafe public static class NativeHookHelper
 		ReadDirectoriesAndSections(procModule, out var imageDataDirs, out var imageSections);
 		var importDataDir = imageDataDirs[1]; //Import directory is always index 1
 
-		if (importDataDir.Size == 0) return null; //Modles has no imports
+		if (importDataDir.Size == 0) return null; //Module has no imports
 
 		using var peFile = new BinaryReader(File.Open(procModule.FileName, FileMode.Open, FileAccess.Read, FileShare.Read));
 
@@ -142,7 +136,7 @@ unsafe public static class NativeHookHelper
 			//PE section containing the IAT for this import descriptor.
 			//The import directory is contiguous and must be inside a single section.
 			//Each import's Import Address Table is contiguous and must be inside a single section.
-			//However, the IATs for all imports are non-configuous and may be storeed in different sections.
+			//However, the IATs for all imports are non-contiguous and may be stored in different sections.
 			var importSection =
 				imageSections.Single(s =>
 					imgImpDes.FirstThunk >= s.VirtualAddress &&
@@ -183,7 +177,7 @@ unsafe public static class NativeHookHelper
 					(i.Ordinal is not null && i.Ordinal == import.Ordinal))) is NativeImport existing)
 				{
 					//It's possible that the same function appears more than once in the import table.
-					//Goup all occurances into a single NativeImport with multiple IAT RVAs
+					//Group all occurrences into a single NativeImport with multiple IAT RVAs
 
 					var rvas = new List<uint>(existing.IAT_RVAs.Count + 1);
 					rvas.AddRange(existing.IAT_RVAs);
@@ -201,7 +195,7 @@ unsafe public static class NativeHookHelper
 	}
 
 	/// <summary>
-	/// Geta all functions exported by <paramref libraryName="procModule"/> in this process.
+	/// Get all functions exported by <paramref libraryName="procModule"/> in this process.
 	/// </summary>
 	/// <param libraryName="procModule">The <see cref="ProcessModule"/> from which imports are read</param>
 	/// <returns>If successful, a list of all functions exported by <paramref libraryName="procModule"/></returns>
@@ -212,7 +206,7 @@ unsafe public static class NativeHookHelper
 		ReadDirectoriesAndSections(procModule, out var imageDataDirs, out _);
 		var exportDataDir = imageDataDirs[0]; //Export directory is always index 0
 
-		if (exportDataDir.Size == 0) return null; //Modles has no imports
+		if (exportDataDir.Size == 0) return null; //Module has no imports
 
 		byte* hModule = (byte*)procModule.BaseAddress;
 
@@ -253,13 +247,20 @@ unsafe public static class NativeHookHelper
 		return exports.Where(e => e is not null).ToList();
 	}
 
-	static string NullTerminatedUtf8(byte* pStr)
+
+	internal static bool EqualsIgnoreCase(this string str, string other)
+		=> str.Equals(other, StringComparison.OrdinalIgnoreCase);
+
+	internal static string RemoveDllExtension(this string libName)
+		=> libName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? libName[..^4] : libName;
+
+	private static string NullTerminatedUtf8(byte* pStr)
 		=> Encoding.UTF8.GetString(
 			MemoryMarshal
 			.CreateReadOnlySpanFromNullTerminated(pStr));
 
 	/// <summary>
-	/// Loads PE imformation for a module in the executing process
+	/// Loads PE information for a module in the executing process
 	/// </summary>
 	/// <param libraryName="module">A <see cref="ProcessModule"/> in the executing process</param>
 	/// <param libraryName="dataDirectories">All image data directories</param>

@@ -17,17 +17,17 @@ public record NativeExport
 	/// <summary>The address of the exported symbol when loaded into memory.</summary>
 	public uint? FunctionRVA { get; }
 	/// <summary>The name of the module and function to which this export forwards</summary>
-	public string? Forwaded { get; }
+	public string? Forwarded { get; }
 	/// <summary>The name of the exported function</summary>
 	public string? FunctionName { get; internal set; }
 
-	internal NativeExport(ProcessModule module, uint eat_RVA, ushort ordinal, uint? functionRVA, string? forwaded)
+	internal NativeExport(ProcessModule module, uint eat_RVA, ushort ordinal, uint? functionRVA, string? forwarded)
 	{
 		Module = module;
 		EAT_RVA = eat_RVA;
 		Ordinal = ordinal;
 		FunctionRVA = functionRVA;
-		Forwaded = forwaded;
+		Forwarded = forwarded;
 	}
 
 	public override string ToString()
@@ -40,13 +40,13 @@ public record NativeExport
 		}
 		else
 		{
-			if (Forwaded is null)
+			if (Forwarded is null)
 			{
 				return $"{modName}.{FunctionName}";
 			}
 			else
 			{
-				return $"{modName}.{FunctionName} -> {Forwaded}";
+				return $"{modName}.{FunctionName} -> {Forwarded}";
 			}
 		}
 	}
