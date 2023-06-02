@@ -1,3 +1,4 @@
+using NativeHelper;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -56,23 +57,57 @@ namespace SampleInjected
 			form.label1.Text = text;
 			form.pictureBox1.Image = img;
 
+			var currentProc = Process.GetCurrentProcess();
 
 			//Hook kernel32.WriteFile in the main module's import table
-			delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook = &WriteFile_hook;
+			delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook1 = &WriteFile_hook;
+			WriteFileHook
+				= currentProc
+				.MainModule
+				?.GetImportByName("kernel32", "WriteFile")
+				?.Hook((nint)hook1);
 
-			nint orig;
-			if (HookImport.InstallHook(null, "kernel32.dll", "WriteFile", (nint)hook, &orig))
-				WriteFile_original = (delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)orig;
+			//Hook kernel32.CreateFileW
+			delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook2 = &CreateFileW_hook;
+			CreateFileWHook
+				= currentProc
+				.GetModulesByName("kernel32")
+				.FirstOrDefault()
+				?.GetExportByName("CreateFileW")
+				?.Hook((nint)hook2);
 
 			Application.Run(form);
 
 			return 0;
 		}
 
+		static ImportHook? WriteFileHook;
+		static ExportHook? CreateFileWHook;
+
+		[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+		static IntPtr CreateFileW_hook(IntPtr lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile)
+		{
+			var fileName = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)lpFileName));
+
+			CreateFileWHook!.RemoveHook();
+
+			var result = ((delegate* unmanaged[Stdcall] <IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)CreateFileWHook.OriginalFunction)
+				(
+				lpFileName,
+				dwDesiredAccess,
+				dwShareMode,
+				lpSecurityAttributes,
+				dwCreationDisposition,
+				dwFlagsAndAttributes,
+				hTemplateFile
+				);
+
+			CreateFileWHook.InstallHook();
+			return result;
+		}
+
 		//Stdcall is the default export calling convention on x86 platforms. x64 only supports
 		//fastcall, so all calling conventions map to fastcall when compiled for x64.
-		static delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> WriteFile_original;
-
 		[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
 		static BOOL WriteFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, int* lpNumberOfBytesWritten, IntPtr lpOverlapped)
 		{
@@ -90,10 +125,19 @@ namespace SampleInjected
 			//Write different data
 			var replacementBytes = Encoding.ASCII.GetBytes("WriteFile was intercepted and modified!");
 
-			int result;
+			BOOL result;
 			//Call the real WriteFile function.
 			fixed (byte* b = replacementBytes)
-				result = WriteFile_original(hFile, b, replacementBytes.Length, lpNumberOfBytesWritten, lpOverlapped);
+			{
+				result = ((delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)WriteFileHook!.OriginalFunction)
+				(
+					hFile,
+					b,
+					replacementBytes.Length,
+					lpNumberOfBytesWritten,
+					lpOverlapped
+				);
+			}
 
 			if (result == 1)
 			{
@@ -101,14 +145,18 @@ namespace SampleInjected
 				*lpNumberOfBytesWritten = nNumberOfBytesToWrite;
 			}
 
+			//Remove the import hook
+			WriteFileHook.RemoveHook();
+
 			return result;
 		}
 
 		[STAThread]
 		static unsafe void Main()
 		{
-			var mod = Process.GetCurrentProcess().Modules.Cast<ProcessModule>().ElementAt(4);
-			var imports = HookImport.GetModuleImports(mod);
+			var type = typeof(delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>);
+			var mods = Process.GetCurrentProcess().GetModulesByName("kernel32").FirstOrDefault().GetExportByName("FindClose").Hook(1);
+
 			ApplicationConfiguration.Initialize();
 			Application.Run(new Form1());
 		}

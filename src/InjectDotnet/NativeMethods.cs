@@ -11,7 +11,7 @@ namespace InjectDotnet
 		internal static extern bool IsWow64Process(SafeProcessHandle process, out bool wow64Process);
 
 		[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-		public static extern IntPtr VirtualAllocEx(SafeProcessHandle hProcess, IntPtr lpAddress, nint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
+		public static extern IntPtr VirtualAllocEx(SafeProcessHandle hProcess, nint lpAddress, nint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
 
 		[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true)]
 		public static extern IntPtr CreateRemoteThread(SafeProcessHandle hProcess,
@@ -24,7 +24,7 @@ namespace InjectDotnet
 		[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
 		public static extern bool VirtualFreeEx(SafeProcessHandle hProcess, IntPtr lpAddress, int dwSize, AllocationType dwFreeType);
 
-		[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true)]
+		[DllImport(KERNEL32, SetLastError = true)]
 		public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
 
 		[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true)]
