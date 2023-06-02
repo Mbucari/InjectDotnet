@@ -19,11 +19,77 @@ There are two sample projects:
 
 It also hooks the `WriteFile` function imported from kernel32.dll by the main module and the `CreateFileW` function exported by kernel32.dll.
 
+### Hooking Imported Functions
 Hooking is imports is accomplished by replacing the target function's address in the program's import address table with a pointer to `WriteFile_hook`, an `[UnmanagedCallersOnly]` method with the same signature. The original WriteFile function pointer is stored. In the sample, all of notepad's calls to `WriteFile` will call `WriteFile_hook`, and `WriteFile_hook` modifies the parameters before calling `Kernel32.WriteFile`.
+
+```C#
+static ImportHook? WriteFileHook;
+
+public static int Bootstrap(IntPtr argument, int size)
+{
+    //Hook kernel32.WriteFile in the main module's import table
+    delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, int> hook1 = &WriteFile_hook;
+    WriteFileHook
+        = currentProc
+        .MainModule
+        ?.GetImportByName("kernel32", "WriteFile")
+        ?.Hook((nint)hook1);
+}
+
+[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+static int WriteFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, int* lpNumberOfBytesWritten, IntPtr lpOverlapped)
+{
+    return ((delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, int>)WriteFileHook!.OriginalFunction)
+    (
+        hFile,
+        lpBuffer,
+        replacementBytes.Length,
+        lpNumberOfBytesWritten,
+        lpOverlapped
+    );
+}
+```
+### Hooking Exported Functions
 
 Hooking is exports is accomplished by overwriting the instructions at `Kernel32.CreateFileW`'s entry point with a jump to `CreateFileW_hook`, an `[UnmanagedCallersOnly]` method with the same signature. In the sample, all calls to `CreateFileW` within notepad's process will call `CreateFileW_hook`. `CreateFileW_hook` peeks at the parameters, removes the hook, calls the original `CreateFileW`, reinstalls the hook, then returns the file handle.
 
-### Debugging SampleInjected with Visual Studio
+```C#
+static ExportHook? CreateFileWHook;
+
+public static int Bootstrap(IntPtr argument, int size)
+{
+    //Hook kernel32.CreateFileW
+    delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook2 = &CreateFileW_hook;
+    CreateFileWHook
+        = currentProc
+        .GetModulesByName("kernel32")
+        .FirstOrDefault()
+        ?.GetExportByName("CreateFileW")
+        ?.Hook((nint)hook2);
+}
+
+[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+static IntPtr CreateFileW_hook(IntPtr lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile)
+{
+    CreateFileWHook!.RemoveHook();
+
+    var result = ((delegate* unmanaged[Stdcall] <IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)CreateFileWHook.OriginalFunction)
+        (
+        lpFileName,
+        dwDesiredAccess,
+        dwShareMode,
+        lpSecurityAttributes,
+        dwCreationDisposition,
+        dwFlagsAndAttributes,
+        hTemplateFile
+        );
+
+    CreateFileWHook.InstallHook();
+    return result;
+}
+```
+
+## Debugging SampleInjected with Visual Studio
 
 To debug the managed dll while it's injected:
 
