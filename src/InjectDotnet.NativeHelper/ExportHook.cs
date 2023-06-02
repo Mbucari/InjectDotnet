@@ -65,11 +65,13 @@ public class ExportHook : NativeHook
 
 		//Allocate some memory to store a pointer to the hook function. The pointer must be in
 		//range of the exported function so that it can be reached with a long jmp. The Maximum
-		//distance of a long jump offset size is 32 bits in both x64 and x64.
-		var pHookFn = FirstFreeAddress(hModule, out _);
-		pHookFn = NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ReadWrite);
+		//distance of a long jump offset size is 32 bits in both x86 and x64.
+		nint minFreeSize = sizeof(nint);
+		var pHookFn = FirstFreeAddress(hExportFn, ref minFreeSize);
+		if (pHookFn == 0 || minFreeSize == 0 || pHookFn - hExportFn > uint.MaxValue) return null;
 
-		if (pHookFn == 0 || pHookFn - hModule > uint.MaxValue) return null;
+		pHookFn = NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ReadWrite);
+		if (pHookFn == 0) return null;
 
 		*(nint*)pHookFn = hookFunction;
 
@@ -83,6 +85,6 @@ public class ExportHook : NativeHook
 	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 	public override string ToString()
 	{
-		return $"{ExportingModuleName.RemoveDllExtension()}.{ExportedFunctionName}()";
+		return $"{ExportingModuleName.RemoveDllExtension()}.{ExportedFunctionName}";
 	}
 }

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace InjectDotnet.NativeHelper.Native;
 
@@ -18,8 +19,9 @@ internal enum AllocationType
 }
 
 [Flags]
-internal enum MemoryProtection : uint
+public enum MemoryProtection : uint
 {
+	_NoAccess,
 	NoAccess = 0x01,
 	ReadOnly = 0x02,
 	ReadWrite = 0x04,
@@ -30,42 +32,157 @@ internal enum MemoryProtection : uint
 	ExecuteWriteCopy = 0x80,
 	Guard = 0x100,
 	NoCache = 0x200,
-	WriteCombine = 0x400
+	WriteCombine = 0x400,
 }
 
-internal enum MemoryState : uint
+public enum MemoryState : uint
 {
+	/// <summary>
+	///  Indicates committed pages for which physical storage has been allocated, either in memory or in the paging file on disk. 
+	/// </summary>
 	MemCommit = 0x1000,
+	/// <summary>
+	///  Indicates reserved pages where a range of the process's virtual address space is reserved without any physical storage
+	///  being allocated. For reserved pages, the information in the <see cref="MemoryBasicInformation.Protect"/> member is undefined. 
+	/// </summary>
 	MemReserve = 0x2000,
+	/// <summary>
+	///  Indicates free pages not accessible to the calling process and available to be allocated.
+	///  For free pages, the information in the <see cref="MemoryBasicInformation.AllocationBase"/>,
+	///  <see cref="MemoryBasicInformation.AllocationProtect"/>, <see cref="MemoryBasicInformation.Protect"/>,
+	///  and <see cref="MemoryBasicInformation.Type"/> members is undefined. 
+	/// </summary>
 	MemFree = 0x10000,
+}
+public enum MemoryType : uint
+{
+	/// <summary>
+	/// Indicates that the memory pages within the region are mapped into the view of an image section. 
+	/// </summary>
+	MemImage = 0x1000000,
+	/// <summary>
+	/// Indicates that the memory pages within the region are mapped into the view of a section. 
+	/// </summary>
+	MemMapped = 0x40000,
+	/// <summary>
+	/// Indicates that the memory pages within the region are private (that is, not shared by other processes). 
+	/// </summary>
+	MemPrivate = 0x20000,
+}
+
+public enum ProcessorArchitecture : ushort
+{
+	Intel_x86 = 0,
+	ARM = 5,
+	IA64 = 6,
+	AMD64 = 9,
+	Arm64 = 12,
+	UNKNOWN = ushort.MaxValue
 }
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
-
-internal struct MemoryBasicInformation
+/// <summary>
+/// Contains information about a range of pages in the virtual address space of a process.
+/// </summary>
+public readonly struct MemoryBasicInformation
 {
-	public nint BaseAddress;
-	public nint AllocationBase;
-	public MemoryProtection AllocationProtect;
-	public nint RegionSize;
-	public MemoryState State;
-	public uint Protect;
-	public uint Type;
+	/// <summary>
+	/// A pointer to the base address of the region of pages.
+	/// </summary>
+	public readonly nint BaseAddress;
+	/// <summary>
+	/// A pointer to the base address of a range of pages allocated by the VirtualAlloc function.
+	/// The page pointed to by the <see cref="BaseAddress"/> member is contained within this allocation range.
+	/// </summary>
+	public readonly nint AllocationBase;
+	/// <summary>
+	/// The memory protection option when the region was initially allocated. This member can be one of the
+	/// memory protection constants or 0 if the caller does not have access.
+	/// </summary>
+	public readonly MemoryProtection AllocationProtect;
+	/// <summary>
+	/// The size of the region beginning at the base address in which all pages have identical attributes, in bytes.
+	/// </summary>
+	public readonly nint RegionSize;
+	/// <summary>
+	/// The state of the pages in the region.
+	/// </summary>
+	public readonly MemoryState State;
+	/// <summary>
+	/// The access protection of the pages in the region.
+	/// </summary>
+	public readonly MemoryProtection Protect;
+	/// <summary>
+	/// The access protection of the pages in the region. This member is one of the values listed for
+	/// the <see cref="AllocationProtect"/> member.
+	/// </summary>
+	public readonly MemoryType Type;
+
+	internal unsafe static int NativeSize => sizeof(MemoryBasicInformation);
+
+	private static nint granularityMask;
+	private static nint GetGranularityMask()
+	{
+		if (granularityMask == 0)
+		{
+			NativeMethods.GetSystemInfo(out var si);
+			granularityMask = (nint)si.AllocationGranularity - 1;
+		}
+		return granularityMask;
+	}
+
+	/// <summary>
+	/// The <see cref="BaseAddress"/> rounded up to the nearest multiple of the allocation granularity
+	/// </summary>
+	public nint BaseAddressRoundedUp => BaseAddress + GetGranularityMask() & ~GetGranularityMask();
+	/// <summary>
+	/// The <see cref="BaseAddress"/> rounded down to the nearest multiple of the allocation granularity
+	/// </summary>
+	public nint BaseAddressRoundedDown => BaseAddress & ~GetGranularityMask();
 }
 
-internal unsafe struct SystemInfo
+/// <summary>
+/// Contains information about the current computer system.
+/// </summary>
+public readonly struct SystemInfo
 {
-	public uint dwOemId;
-	public uint dwPageSize;
-	public nint lpMinimumApplicationAddress;
-	public nint lpMaximumApplicationAddress;
-	public uint* dwActiveProcessorMask;
-	public uint dwNumberOfProcessors;
-	public uint dwProcessorType;
-	public uint dwAllocationGranularity;
-	public ushort wProcessorLevel;
-	public ushort wProcessorRevision;
+	/// <summary>
+	/// The processor architecture of the installed operating system.
+	/// </summary>
+	public readonly ProcessorArchitecture Architecture;
+	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+	private readonly ushort wReserved;
+	/// <summary>
+	/// The page size and the granularity of page protection and commitment. 
+	/// </summary>
+	public readonly uint PageSize;
+	/// <summary>
+	/// A pointer to the lowest memory address accessible to applications and dynamic-link libraries (DLLs).
+	/// </summary>
+	public readonly nint MinimumApplicationAddress;
+	/// <summary>
+	/// A pointer to the highest memory address accessible to applications and DLLs.
+	/// </summary>
+	public readonly nint MaximumApplicationAddress;
+	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+	private readonly nint dwActiveProcessorMask;
+	/// <summary>
+	/// The number of logical processors in the current group. 
+	/// </summary>
+	public readonly int NumberOfProcessors;
+	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+	private readonly uint dwProcessorType;
+	/// <summary>
+	/// The granularity for the starting address at which virtual memory can be allocated.
+	/// </summary>
+	public readonly uint AllocationGranularity;
+	/// <summary>
+	/// The architecture-dependent processor level. It should be used only for display purposes.
+	/// </summary>
+	public readonly ushort ProcessorLevel;
+	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
+	private readonly ushort wProcessorRevision;
 }
 
 internal struct ImageExportDirectory

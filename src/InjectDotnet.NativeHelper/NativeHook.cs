@@ -76,11 +76,13 @@ public class NativeHook : INativeHook
 
 		//Allocate some memory to store a pointer to the hook function. The pointer must be in
 		//range of the exported function so that it can be reached with a long jmp. The Maximum
-		//distance of a long jump offset size is 32 bits in both x64 and x64.
-		var pHookFn = FirstFreeAddress(nativeFunctionEntryPoint, out _);
-		pHookFn = NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ReadWrite);
+		//distance of a long jump offset size is 32 bits in both x86 and x64.
+		nint minFreeSize = sizeof(nint);
+		var pHookFn = FirstFreeAddress(nativeFunctionEntryPoint, ref minFreeSize);
+		if (pHookFn == 0 || minFreeSize == 0 || pHookFn - nativeFunctionEntryPoint > uint.MaxValue) return null;
 
-		if (pHookFn == 0 || pHookFn - nativeFunctionEntryPoint > uint.MaxValue) return null;
+		pHookFn = NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ReadWrite);
+		if (pHookFn == 0) return null;
 
 		*(nint*)pHookFn = hookFunction;
 
@@ -97,29 +99,18 @@ public class NativeHook : INativeHook
 	/// Find the first free region of memory after <paramref name="baseAddress"/>
 	/// </summary>
 	/// <param name="baseAddress">The virtual memory address to begin searching for free memory</param>
-	/// <param name="freeSize">Size of the free memory block</param>
+	/// <param name="minFreeSize">Size of the free memory block</param>
 	/// <returns>Base address of the free memory block</returns>
-	unsafe protected static nint FirstFreeAddress(nint baseAddress, out nint freeSize)
+	protected static nint FirstFreeAddress(nint baseAddress, ref nint minFreeSize)
 	{
-		SystemInfo si;
-		NativeMethods.GetSystemInfo(&si);
-		var granularityMask = (nint)si.dwAllocationGranularity - 1;
-
-		MemoryBasicInformation mbi;
-		do
+		var minSize = minFreeSize;
+		foreach (var mbi in NativeMemory.GetMemoryInfo(baseAddress).Where(m => m.State == MemoryState.MemFree))
 		{
-			do
-			{
-				NativeMethods.VirtualQuery(baseAddress, &mbi, sizeof(MemoryBasicInformation));
-				baseAddress += mbi.RegionSize;
-			}
-			while (mbi.State != MemoryState.MemFree);
+			minFreeSize = mbi.RegionSize - (mbi.BaseAddressRoundedUp - mbi.BaseAddress);
 
-			//Round up to the nearest multiple of the allocation granularity
-			baseAddress = (mbi.BaseAddress + granularityMask) & ~granularityMask;
-			freeSize = mbi.RegionSize - (baseAddress - mbi.BaseAddress);
-		} while (freeSize <= 0);
-
-		return baseAddress;
+			if (minFreeSize > minSize) return mbi.BaseAddressRoundedUp;
+		}
+		minFreeSize = 0;
+		return 0;
 	}
 }
