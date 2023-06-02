@@ -5,7 +5,7 @@ Inject a .NET Core dll into a native Win32 or Win64 process. InjectDotnet is a l
 - **InjectDotnet**: Injects a managed dll into a native process.
 - **NativeHelper**: Referenced by the injected dll and provides methods for hooking native functions
 
-## No Unmanaged Code
+## No Unmanaged Libraries
 
 Unlike other dotnet dll injectors, this one does not rely on a native dll to load the runtime in the target process. Loading and executing the injected dll is accomplished by hand-written assembly instructions that are written directly into the target process' memory space and executed.
 
