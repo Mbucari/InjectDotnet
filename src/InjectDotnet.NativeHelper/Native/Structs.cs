@@ -1,7 +1,6 @@
 ﻿using System.Text;
 
-namespace NativeHelper;
-
+namespace InjectDotnet.NativeHelper.Native;
 
 [Flags]
 internal enum AllocationType

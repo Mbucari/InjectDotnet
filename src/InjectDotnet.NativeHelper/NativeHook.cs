@@ -1,4 +1,6 @@
-﻿namespace NativeHelper;
+﻿using InjectDotnet.NativeHelper.Native;
+
+namespace InjectDotnet.NativeHelper;
 
 /// <summary>And instance of a hooked native function</summary>
 public class NativeHook : INativeHook

@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper;
 
 /// <summary>
 /// A record of an external function imported by a native module.

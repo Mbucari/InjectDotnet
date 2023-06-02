@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper.Native;
 
 internal static class NativeMethods
 {

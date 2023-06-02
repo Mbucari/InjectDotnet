@@ -1,8 +1,9 @@
-﻿using System.Diagnostics;
+﻿using InjectDotnet.NativeHelper.Native;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper;
 
 unsafe public static class NativeHookHelper
 {

@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NativeHelper\NativeHelper.csproj" />
+    <ProjectReference Include="..\..\src\InjectDotnet.NativeHelper\InjectDotnet.NativeHelper.csproj" />
   </ItemGroup>
 	
 </Project>

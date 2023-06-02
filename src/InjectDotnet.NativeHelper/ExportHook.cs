@@ -1,7 +1,8 @@
-﻿using System.Diagnostics;
+﻿using InjectDotnet.NativeHelper.Native;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper;
 
 /// <summary>
 /// And instance of a hooked <see cref="NativeExport"/>

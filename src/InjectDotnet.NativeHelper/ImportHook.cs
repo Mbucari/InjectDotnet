@@ -1,6 +1,7 @@
-﻿using System.Diagnostics;
+﻿using InjectDotnet.NativeHelper.Native;
+using System.Diagnostics;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper;
 
 /// <summary>And instance of a hooked <see cref="NativeImport"/></summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]

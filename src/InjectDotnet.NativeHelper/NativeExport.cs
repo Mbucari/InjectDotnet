@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace NativeHelper;
+namespace InjectDotnet.NativeHelper;
 
 /// <summary>
 /// A record of a function exported by a native module.

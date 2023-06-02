@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{57568B1B-9C8
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectDotnet", "src\InjectDotnet\InjectDotnet.csproj", "{230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NativeHelper", "src\NativeHelper\NativeHelper.csproj", "{3DBA0EB3-7EB1-41A6-BD88-28CE34C85E52}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectDotnet.NativeHelper", "src\InjectDotnet.NativeHelper\InjectDotnet.NativeHelper.csproj", "{3DBA0EB3-7EB1-41A6-BD88-28CE34C85E52}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{C42930AA-918A-4A25-9091-29EF5A58FADE}"
 EndProject
