@@ -45,8 +45,6 @@ internal unsafe static class Program
 		VirtualFree(arg.Text, 0, 0x8000);
 		VirtualFree(arg.Picture, 0, 0x8000);
 
-		ApplicationConfiguration.Initialize();
-
 		using var ms = new MemoryStream(pic);
 		Image img = Image.FromStream(ms);
 
@@ -149,15 +147,5 @@ internal unsafe static class Program
 		WriteFileHook.RemoveHook();
 
 		return result;
-	}
-
-	[STAThread]
-	static unsafe void Main()
-	{
-		var type = typeof(delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>);
-		var mods = Process.GetCurrentProcess().GetModulesByName("kernel32").FirstOrDefault().GetExportByName("FindClose").Hook(1);
-
-		ApplicationConfiguration.Initialize();
-		Application.Run(new Form1());
 	}
 }

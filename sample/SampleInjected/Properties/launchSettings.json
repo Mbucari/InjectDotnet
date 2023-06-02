@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "SampleInjected": {
+      "commandName": "Project"
+    },
+    "DebugNative": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Windows\\notepad.exe"
+    }
+  }
+}
