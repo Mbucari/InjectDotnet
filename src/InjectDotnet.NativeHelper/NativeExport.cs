@@ -36,7 +36,7 @@ public record NativeExport
 
 		if (FunctionName is null)
 		{
-			return $"{modName}.#{Ordinal}";
+			return $"{modName}.@{Ordinal}";
 		}
 		else
 		{

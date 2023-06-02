@@ -7,6 +7,7 @@ namespace InjectDotnet.NativeHelper;
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public class ImportHook : INativeHook
 {
+	private bool isHooked;
 	/// <summary>The <see cref="ProcessModule"/> whose import address table is modified to hook
 	/// calls to <see cref="OriginalFunction"/> in <see cref="ImportedModuleName"/></summary>
 	public ProcessModule HookedModule { get; }
@@ -16,7 +17,15 @@ public class ImportHook : INativeHook
 	public string ImportedFunctionName { get; }
 	/// <summary>Entry point of <see cref="ImportedFunctionName"/></summary>
 	public nint OriginalFunction { get; private set; }
-	public bool IsHooked { get; private set; }
+	public bool IsHooked
+	{
+		get => isHooked;
+		set
+		{
+			if (value) InstallHook();
+			else RemoveHook();
+		}
+	}
 
 	/// <summary>Address of the unmanaged delegate that is hooking <see cref="OriginalFunction"/></summary>
 	private nint HookFunction { get; }
@@ -61,7 +70,7 @@ public class ImportHook : INativeHook
 				didReplace = true;
 			}
 
-			return IsHooked = didReplace && OriginalFunction != 0;
+			return isHooked = didReplace && OriginalFunction != 0;
 		}
 	}
 
@@ -82,7 +91,7 @@ public class ImportHook : INativeHook
 				didReplace = true;
 			}
 
-			return !(IsHooked = !didReplace);
+			return !(isHooked = !didReplace);
 		}
 	}
 
@@ -98,7 +107,7 @@ public class ImportHook : INativeHook
 	{
 		if (hookFunction == 0 || import.IAT_RVAs.Count is 0) return null;
 
-		var funcName = import.Ordinal is ushort ordinal ? $"#{ordinal}" : import.FunctionName;
+		var funcName = import.Ordinal is ushort ordinal ? $"@{ordinal}" : import.FunctionName;
 		if (funcName is null) return null;
 
 		var iatEntries
@@ -114,7 +123,5 @@ public class ImportHook : INativeHook
 	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 	public override string ToString()
-	{
-		return $"{HookedModule.ModuleName ?? HookedModule.FileName ?? "[MODULE]"}<{ImportedModuleName.RemoveDllExtension()}.{ImportedFunctionName}>";
-	}
+		=> $"{HookedModule.ModuleName ?? HookedModule.FileName ?? "[MODULE]"}<{ImportedModuleName.RemoveDllExtension()}.{ImportedFunctionName}>";
 }

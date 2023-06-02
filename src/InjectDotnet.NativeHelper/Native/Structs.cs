@@ -4,7 +4,7 @@ using System.Text;
 namespace InjectDotnet.NativeHelper.Native;
 
 [Flags]
-internal enum AllocationType
+public enum AllocationType
 {
 	Commit = 0x1000,
 	Reserve = 0x2000,
@@ -18,6 +18,9 @@ internal enum AllocationType
 	ReserveCommit = Reserve | Commit
 }
 
+/// <summary>
+/// memory-protection options
+/// </summary>
 [Flags]
 public enum MemoryProtection : uint
 {
@@ -26,15 +29,18 @@ public enum MemoryProtection : uint
 	ReadOnly = 0x02,
 	ReadWrite = 0x04,
 	WriteCopy = 0x08,
-	Execute = 0x10,
-	ExecuteRead = 0x20,
-	ExecuteReadWrite = 0x40,
-	ExecuteWriteCopy = 0x80,
+	Execute = 1 << 4,
+	ExecuteRead = ReadOnly << 4,
+	ExecuteReadWrite = ReadWrite << 4,
+	ExecuteWriteCopy = WriteCopy << 4,
 	Guard = 0x100,
 	NoCache = 0x200,
 	WriteCombine = 0x400,
 }
 
+/// <summary>
+/// The state of memory pages in a region.
+/// </summary>
 public enum MemoryState : uint
 {
 	/// <summary>
@@ -54,6 +60,10 @@ public enum MemoryState : uint
 	/// </summary>
 	MemFree = 0x10000,
 }
+
+/// <summary>
+/// The type of memory pages in a region
+/// </summary>
 public enum MemoryType : uint
 {
 	/// <summary>
@@ -70,6 +80,9 @@ public enum MemoryType : uint
 	MemPrivate = 0x20000,
 }
 
+/// <summary>
+/// The processor architecture of the installed operating system.
+/// </summary>
 public enum ProcessorArchitecture : ushort
 {
 	Intel_x86 = 0,

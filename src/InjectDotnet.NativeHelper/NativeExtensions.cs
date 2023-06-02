@@ -5,7 +5,7 @@ using System.Text;
 
 namespace InjectDotnet.NativeHelper;
 
-unsafe public static class NativeHookHelper
+unsafe public static class NativeExtensions
 {
 	/// <summary>
 	/// Hook a native dll import with an <see cref="UnmanagedCallersOnlyAttribute"/> delegate

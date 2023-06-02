@@ -5,8 +5,8 @@ public interface INativeHook
 {
 	/// <summary>Entry point of the function being hooked</summary>
 	nint OriginalFunction { get; }
-	/// <summary>Whether <see cref="OriginalFunction"/> is currently hooked</summary>
-	bool IsHooked { get; }
+	/// <summary>Get or set the hook status of <see cref="OriginalFunction"/></summary>
+	bool IsHooked { get; set; }
 
 	/// <summary>Hook the <see cref="OriginalFunction"/></summary>
 	/// <returns>Success</returns>

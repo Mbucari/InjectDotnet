@@ -2,7 +2,7 @@
 
 namespace InjectDotnet.NativeHelper.Native;
 
-internal static class NativeMethods
+public static class NativeMethods
 {
 	private const string KERNEL32 = "Kernel32.dll";
 

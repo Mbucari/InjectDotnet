@@ -1,5 +1,4 @@
 ﻿using InjectDotnet.NativeHelper.Native;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper;
@@ -7,7 +6,6 @@ namespace InjectDotnet.NativeHelper;
 /// <summary>
 /// And instance of a hooked <see cref="NativeExport"/>
 /// </summary>
-[DebuggerDisplay("{DebuggerDisplay,nq}")]
 public class ExportHook : NativeHook
 {
 	/// <summary>FunctionName of the module whose exported function will be replaced</summary>
@@ -18,9 +16,9 @@ public class ExportHook : NativeHook
 	private ExportHook(
 		string exportingModuleName,
 		string exportFunctionName,
-		nint hExportFn,
-		nint hookFunctionPointer,
-		ulong originalCode) : base(hExportFn, hookFunctionPointer, originalCode)
+		nint hExportFunc,
+		nint pHookFunc)
+		: base(hExportFunc, pHookFunc)
 	{
 		ExportingModuleName = exportingModuleName;
 		ExportedFunctionName = exportFunctionName;
@@ -47,44 +45,29 @@ public class ExportHook : NativeHook
 		NativeExport export,
 		nint hookFunction)
 	{
-		if (hookFunction == 0 || (export.Module.FileName ?? export.Module.ModuleName) is not string moduleName) return null;
+		if (hookFunction == 0 ||
+			(export.Module.FileName ?? export.Module.ModuleName) is not string moduleName ||
+			!NativeLibrary.TryLoad(moduleName, out var hModule)) return null;
 
-		if (!NativeLibrary.TryLoad(moduleName, out var hModule))
-			return null;
-
-		string funcName;
-		if (export.FunctionName is not null && NativeLibrary.TryGetExport(hModule, export.FunctionName, out nint hExportFn))
-			funcName = export.FunctionName;
-		else if ((hExportFn = NativeMethods.GetProcAddress(hModule, export.Ordinal)) != 0)
-			funcName = $"#{export.Ordinal}";
+		string exportFuncName;
+		if (export.FunctionName is not null && NativeLibrary.TryGetExport(hModule, export.FunctionName, out nint hExportFunc))
+			exportFuncName = export.FunctionName;
+		else if ((hExportFunc = NativeMethods.GetProcAddress(hModule, export.Ordinal)) != 0)
+			exportFuncName = $"@{export.Ordinal}";
 		else
 			return null;
 
-		//Backup the first 8 bytes of the original export function's code. 
-		ulong originalCode = *(ulong*)hExportFn;
+		nint pHookFunc = AllocatePointerNearBase(hExportFunc);
+		if (pHookFunc == 0) return null;
 
-		//Allocate some memory to store a pointer to the hook function. The pointer must be in
-		//range of the exported function so that it can be reached with a long jmp. The Maximum
-		//distance of a long jump offset size is 32 bits in both x86 and x64.
-		nint minFreeSize = sizeof(nint);
-		var pHookFn = FirstFreeAddress(hExportFn, ref minFreeSize);
-		if (pHookFn == 0 || minFreeSize == 0 || pHookFn - hExportFn > uint.MaxValue) return null;
+		*(nint*)pHookFunc = hookFunction;
 
-		pHookFn = NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ReadWrite);
-		if (pHookFn == 0) return null;
-
-		*(nint*)pHookFn = hookFunction;
-
-		var hook = new ExportHook(Path.GetFileName(moduleName), funcName, hExportFn, pHookFn, originalCode);
+		var hook = new ExportHook(Path.GetFileName(moduleName), exportFuncName, hExportFunc, pHookFunc);
 
 		//Do not free hModule
 		return hook.InstallHook() ? hook : null;
 	}
 
-	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
-	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 	public override string ToString()
-	{
-		return $"{ExportingModuleName.RemoveDllExtension()}.{ExportedFunctionName}";
-	}
+		=> $"{ExportingModuleName.RemoveDllExtension()}.{ExportedFunctionName}";
 }

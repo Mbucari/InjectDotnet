@@ -42,7 +42,7 @@ public record NativeImport
 		}
 		else if (Ordinal is not null)
 		{
-			return $"{modName}<{Library}.#{Ordinal}>";
+			return $"{modName}<{Library}.@{Ordinal}>";
 		}
 		else
 		{

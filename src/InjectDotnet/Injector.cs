@@ -123,6 +123,9 @@ public static class Injector
 			= tryGetVersion(options["framework"])
 			?? options["frameworks"]?.AsArray().Select(tryGetVersion).FirstOrDefault(v => v is not null);
 
+		if (runtimeVersion is null)
+			throw new KeyNotFoundException($"Could not determine the Microsoft.NETCore.App runtime from runtimeconfig.json");
+
 		if (GetInstalledFrameworks().FirstOrDefault(v => v >= runtimeVersion) is not Version installedRuntimeVer)
 			throw new DirectoryNotFoundException($"Could not find installed Microsoft.NETCore.App runtime with version >= {runtimeVersion:3}");
 
