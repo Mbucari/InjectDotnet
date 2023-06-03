@@ -117,7 +117,7 @@ public static class Injector
 			throw new ArgumentException($"{nameof(dllToInject)} file not found");
 
 		if (JsonNode.Parse(File.ReadAllText(runtimeconfig))?["runtimeOptions"] is not JsonNode options)
-			return null;
+			throw new KeyNotFoundException($"Could not 'runtimeOptions' from runtimeconfig.json");
 
 		Version? runtimeVersion
 			= tryGetVersion(options["framework"])
@@ -137,24 +137,45 @@ public static class Injector
 
 		var k3dMod = target.GetKernel32();
 
-		var param = new InjectParams
+		InjectParams? param = null;
+		IntPtr? loader = null;
+		try
 		{
-			fnConfig = hostMod.GetProcAddress("hostfxr_initialize_for_runtime_config"),
-			fnGetDelegate = hostMod.GetProcAddress("hostfxr_get_runtime_delegate"),
-			fnClose = hostMod.GetProcAddress("hostfxr_close"),
-			fnVirtualFree = k3dMod.GetProcAddress("VirtualFree"),
-			fnExitThread = k3dMod.GetProcAddress("ExitThread"),
-			str_runtimeconfig = target.WriteMemory(runtimeconfig),
-			str_dll_path = target.WriteMemory(dllToInject),
-			str_method_name = target.WriteMemory(method),
-			str_type = target.WriteMemory(asssemblyQualifiedTypeName),
-			args = target.WriteMemory(argument),
-			sz_args = argument.Length
-		};
+			param = new InjectParams
+			{
+				fnConfig = hostMod.GetProcAddress("hostfxr_initialize_for_runtime_config"),
+				fnGetDelegate = hostMod.GetProcAddress("hostfxr_get_runtime_delegate"),
+				fnClose = hostMod.GetProcAddress("hostfxr_close"),
+				fnVirtualFree = k3dMod.GetProcAddress("VirtualFree"),
+				fnExitThread = k3dMod.GetProcAddress("ExitThread"),
+				str_runtimeconfig = target.WriteMemory(runtimeconfig),
+				str_dll_path = target.WriteMemory(dllToInject),
+				str_method_name = target.WriteMemory(method),
+				str_type = target.WriteMemory(asssemblyQualifiedTypeName),
+				args = target.WriteMemory(argument),
+				sz_args = argument.Length
+			};
 
-		var loader = target.WriteMemory(DOTNET_LOADER_ASM, MemoryProtection.Execute);
 
-		return target.Call(loader, param, waitForReturn);
+			loader = target.WriteMemory(DOTNET_LOADER_ASM, MemoryProtection.Execute);
+
+			return target.Call(loader.Value, param.Value, waitForReturn);
+		}
+		catch
+		{
+			if (param is InjectParams p)
+			{
+				target.Free(p.str_runtimeconfig);
+				target.Free(p.str_dll_path);
+				target.Free(p.str_method_name);
+				target.Free(p.str_type);
+				target.Free(p.args);
+			}
+			if (loader is IntPtr l)
+				target.Free(l);
+
+			return null;
+		}
 
 		static Version? tryGetVersion(JsonNode? framework)
 			=> framework?["name"]?.GetValue<string>() == "Microsoft.NETCore.App" &&

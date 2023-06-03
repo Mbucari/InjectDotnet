@@ -101,7 +101,16 @@ public static class ProcessExtensions
 
 	public static int? Call(this Process proc, IntPtr function, IntPtr argument, bool waitForExit = true)
 	{
-		IntPtr hThread = NativeMethods.CreateRemoteThread(proc.SafeHandle, IntPtr.Zero, 0, function, argument, 0, out _);
+		IntPtr hThread;
+		try
+		{
+			hThread = NativeMethods.CreateRemoteThread(proc.SafeHandle, IntPtr.Zero, 0, function, argument, 0, out _);
+		}
+		catch
+		{
+			proc.Free(argument);
+			throw;
+		}
 
 		if (!waitForExit) return null;
 
