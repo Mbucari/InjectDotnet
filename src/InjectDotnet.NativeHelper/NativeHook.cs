@@ -86,6 +86,15 @@ public class NativeHook : INativeHook
 	{
 		if (nativeFunctionEntryPoint == 0 || hookFunction == 0) return null;
 
+		NativeMethods.VirtualQuery(nativeFunctionEntryPoint, out var mbi, MemoryBasicInformation.NativeSize);
+
+		if (mbi.Protect
+			is not MemoryProtection.Execute
+			and not MemoryProtection.ExecuteRead
+			and not MemoryProtection.ExecuteReadWrite
+			and not MemoryProtection.ExecuteWriteCopy)
+			return null;
+
 		nint pHookFunc = AllocatePointerNearBase(nativeFunctionEntryPoint);
 		if (pHookFunc == 0) return null;
 
