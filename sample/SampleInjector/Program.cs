@@ -34,7 +34,7 @@ internal unsafe class Program
 
 		Injector.Inject(
 			target,
-			Path.GetFullPath("Sample.runtimeconfig.json"),
+			Path.GetFullPath("SampleInjected.runtimeconfig.json"),
 			Path.GetFullPath("SampleInjected.dll"),
 			"SampleInjected.Program, SampleInjected, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
 			"Bootstrap",

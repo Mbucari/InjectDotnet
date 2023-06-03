@@ -11,7 +11,12 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <PropertyGroup>
+	<PropertyGroup>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+	</PropertyGroup>
+
+	
+	<PropertyGroup>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
