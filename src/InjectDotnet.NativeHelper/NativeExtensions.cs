@@ -11,13 +11,27 @@ unsafe public static class NativeExtensions
 	/// Hook a native dll import with an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// </summary>
 	/// <param name="import">The import to hook</param>
-	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
+	/// <param name="hook">A pointer to either an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// with the same parameter signature as the native import</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
-	public static ImportHook? Hook(this NativeImport? import, nint hook)
+	public static ImportHook? Hook(this NativeImport? import, void* hook)
 	{
-		if (import is null || hook == 0) return null;
-		return ImportHook.Create(import, hook);
+		var hookPointer = (nint)hook;
+		if (import is null || hookPointer == 0) return null;
+		return ImportHook.Create(import, hookPointer);
+	}
+
+	/// <summary>
+	/// Hook a native dll import with a managed <see cref="Delegate"/>
+	/// </summary>
+	/// <param name="import">The import to hook</param>
+	/// <param name="hook">A managed delegate with the same parameter signature as the native import</param>
+	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
+	public static ImportHook? Hook<TDelegate>(this NativeImport? import, TDelegate hook) where TDelegate : Delegate
+	{
+		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
+		if (import is null || hookPointer == 0) return null;
+		return ImportHook.Create(import, hookPointer);
 	}
 
 	/// <summary>
@@ -38,10 +52,36 @@ unsafe public static class NativeExtensions
 	/// identically named functions in kernelbase.
 	/// </remarks>
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
-	public static ExportHook? Hook(this NativeExport? export, nint hook)
+	public static ExportHook? Hook(this NativeExport? export, void* hook)
 	{
-		if (export is null || hook == 0) return null;
-		return ExportHook.Create(export, hook);
+		var hookPointer = (nint)hook;
+		if (export is null || hookPointer == 0) return null;
+		return ExportHook.Create(export, hookPointer);
+	}
+
+	/// <summary>
+	/// Hook a native dll export with a managed <see cref="Delegate"/>
+	/// </summary>
+	/// <typeparam name="TDelegate"></typeparam>
+	/// <param name="export">The export to hook</param>
+	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
+	/// <remarks>
+	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
+	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
+	/// the EAT after the PE is loaded will have no effect. Instead, Hooking is accomplished by replacing the first 6
+	/// bytes of the function with a jump instruction to the hook. This is destructive and means that the original function
+	/// cannot be called until the hook is removed.
+	/// <br /><br />
+	/// If the export points to an entry in a jump table, you may work around this limitation by creating a delegate for the
+	/// original function at the target of that jump. Many winapi functions exported by kernel32, for instance, are jumps to
+	/// identically named functions in kernelbase.
+	/// </remarks>
+	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
+	public static ExportHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook) where TDelegate : Delegate
+	{
+		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
+		if (export is null || hookPointer == 0) return null;
+		return ExportHook.Create(export, hookPointer);
 	}
 
 	/// <summary>

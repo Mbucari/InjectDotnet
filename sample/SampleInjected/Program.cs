@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 //Must use blitable types in UnmanagedCallersOnly delegates
-using BOOL = System.Int32;
 
 namespace SampleInjected;
 
@@ -58,21 +57,32 @@ internal unsafe static class Program
 		var currentProc = Process.GetCurrentProcess();
 
 		//Hook kernel32.WriteFile in the main module's import table
-		delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook1 = &WriteFile_hook;
 		WriteFileHook
-			= currentProc
+			= Process
+			.GetCurrentProcess()
 			.MainModule
 			?.GetImportByName("kernel32", "WriteFile")
-			?.Hook((nint)hook1);
+			?.Hook(WriteFile_hook);
+
+		if (WriteFileHook is not null)
+			WriteFile_original = Marshal
+			.GetDelegateForFunctionPointer<WriteFileDelegate>(WriteFileHook.OriginalFunction);
+
 
 		//Hook kernel32.CreateFileW
 		delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook2 = &CreateFileW_hook;
 		CreateFileWHook
-			= currentProc
+			= Process
+			.GetCurrentProcess()
 			.GetModulesByName("kernel32")
 			.FirstOrDefault()
 			?.GetExportByName("CreateFileW")
-			?.Hook((nint)hook2);
+			?.Hook(hook2);
+
+		//kernel32.CreateFileW forwards to kernelbase.CreateFileW;
+		CreateFileW_original =
+			(delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)
+			NativeLibrary.GetExport(NativeLibrary.Load("kernelbase"), "CreateFileW");
 
 		Application.Run(form);
 
@@ -81,33 +91,33 @@ internal unsafe static class Program
 
 	static ImportHook? WriteFileHook;
 	static ExportHook? CreateFileWHook;
+	static WriteFileDelegate? WriteFile_original;
+	static delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> CreateFileW_original;
 
+	delegate bool WriteFileDelegate(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, ref int lpNumberOfBytesWritten, IntPtr lpOverlapped);
+
+	//Stdcall is the default export calling convention on x86 platforms. x64 only supports
+	//fastcall, so all calling conventions map to fastcall when compiled for x64.
 	[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
 	static IntPtr CreateFileW_hook(IntPtr lpFileName, uint dwDesiredAccess, uint dwShareMode, IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile)
 	{
 		var fileName = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)lpFileName));
 
-		CreateFileWHook!.RemoveHook();
+		var result
+			= CreateFileW_original is null ? IntPtr.Zero
+			: CreateFileW_original(
+				lpFileName,
+				dwDesiredAccess,
+				dwShareMode,
+				lpSecurityAttributes,
+				dwCreationDisposition,
+				dwFlagsAndAttributes,
+				hTemplateFile);
 
-		var result = ((delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)CreateFileWHook.OriginalFunction)
-			(
-			lpFileName,
-			dwDesiredAccess,
-			dwShareMode,
-			lpSecurityAttributes,
-			dwCreationDisposition,
-			dwFlagsAndAttributes,
-			hTemplateFile
-			);
-
-		CreateFileWHook.InstallHook();
 		return result;
 	}
 
-	//Stdcall is the default export calling convention on x86 platforms. x64 only supports
-	//fastcall, so all calling conventions map to fastcall when compiled for x64.
-	[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
-	static BOOL WriteFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, int* lpNumberOfBytesWritten, IntPtr lpOverlapped)
+	static bool WriteFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, ref int NumberOfBytesWritten, IntPtr lpOverlapped)
 	{
 		//Get the filename being written to
 		var sz = GetFinalPathNameByHandleW(hFile, null, 0, 0);
@@ -123,28 +133,22 @@ internal unsafe static class Program
 		//Write different data
 		var replacementBytes = Encoding.ASCII.GetBytes("WriteFile was intercepted and modified!");
 
-		BOOL result;
+
+		bool result;
 		//Call the real WriteFile function.
 		fixed (byte* b = replacementBytes)
 		{
-			result = ((delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)WriteFileHook!.OriginalFunction)
-			(
-				hFile,
-				b,
-				replacementBytes.Length,
-				lpNumberOfBytesWritten,
-				lpOverlapped
-			);
+			result = WriteFile_original!(hFile, b, replacementBytes.Length, ref NumberOfBytesWritten, lpOverlapped);
 		}
 
-		if (result == 1)
+		if (result)
 		{
 			//Lie to the caller about the number of bytes written
-			*lpNumberOfBytesWritten = nNumberOfBytesToWrite;
+			NumberOfBytesWritten = nNumberOfBytesToWrite;
 		}
 
 		//Remove the import hook
-		WriteFileHook.RemoveHook();
+		WriteFileHook!.RemoveHook();
 
 		return result;
 	}
