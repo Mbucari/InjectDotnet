@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace InjectDotnet.NativeHelper;
 
-/// <summary>And instance of a hooked native function</summary>
+/// <summary>An instance of a hooked native function</summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public class NativeHook : INativeHook
 {
@@ -19,9 +19,9 @@ public class NativeHook : INativeHook
 		}
 	}
 	/// <summary>Original first 8 bytes of <see cref="OriginalFunction"/>'s instructions
-	/// that was replaced with a jump to the hook function</summary>
+	/// that were replaced with a jump to the hook function</summary>
 	protected ulong OriginalCode { get; }
-	/// <summary>Pointer to the unmanaged delegate that is hooking <see cref="OriginalFunction"/></summary>
+	/// <summary>Pointer to the delegate that is hooking <see cref="OriginalFunction"/></summary>
 	protected nint HookFunctionPointer { get; }
 
 	unsafe protected NativeHook(
@@ -77,8 +77,8 @@ public class NativeHook : INativeHook
 	/// <summary>
 	/// Create a <see cref="NativeHook"/> for a native function in this process.
 	/// </summary>
-	/// <param name="nativeFunctionEntryPoint"></param>
-	/// <param name="hookFunction"></param>
+	/// <param name="nativeFunctionEntryPoint">Entry point of an unmanaged function</param>
+	/// <param name="hookFunction">Address of a delegate that will be called instead of <paramref name="nativeFunctionEntryPoint"/></param>
 	/// <returns>A valid <see cref="NativeHook"/> if successful</returns>
 	unsafe public static NativeHook? Create(
 		nint nativeFunctionEntryPoint,
@@ -106,7 +106,7 @@ public class NativeHook : INativeHook
 	/// range of the exported function so that it can be reached with a long jmp. The Maximum
 	/// distance of a long jump offset size is 32 bits in both x86 and x64. 
 	/// </summary>
-	/// <param name="baseAddress"></param>
+	/// <param name="baseAddress">Address in virtual to begin searching for a free memory block</param>
 	/// <returns>A pointer to the beginning of the free memory block</returns>
 	protected static unsafe nint AllocatePointerNearBase(nint baseAddress)
 	{

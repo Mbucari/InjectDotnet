@@ -4,13 +4,13 @@ using System.Runtime.InteropServices;
 namespace InjectDotnet.NativeHelper;
 
 /// <summary>
-/// And instance of a hooked <see cref="NativeExport"/>
+/// An instance of a hooked <see cref="NativeExport"/>
 /// </summary>
 public class ExportHook : NativeHook
 {
-	/// <summary>FunctionName of the module whose exported function will be replaced</summary>
+	/// <summary>Name of the module whose exported function is being hooked</summary>
 	public string ExportingModuleName { get; }
-	/// <summary>FunctionName of the exported function that's been hooked</summary>
+	/// <summary>Name of the exported function that's being hooked</summary>
 	public string ExportedFunctionName { get; }
 
 	private ExportHook(
@@ -25,12 +25,12 @@ public class ExportHook : NativeHook
 	}
 
 	/// <summary>
-	/// Create a <see cref="ExportHook"/> for a native function exported by a native library in this process.
+	/// Create an <see cref="ExportHook"/> for a native function exported by a native library in this process.
 	/// </summary>
-	/// <param name="export">The import in the current process to be hooked.</param>
-	/// <param name="hookFunction">Pointer to a managed delegate that will be called instead of <paramref name="exportedFunctionName"/></param>
+	/// <param name="export">The exported function to be hooked.</param>
+	/// <param name="hookFunction">Pointer to a delegate that will be called instead of <see cref="NativeExport.FunctionName"/></param>
 	/// <remarks>
-	/// While imports can be hooked by changing the function pointer in the modules IAT, exports can't be hooked so simply.
+	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
 	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
 	/// the EAT after the PE is loaded will have no effect. Instead, Hooking is accomplished by replacing the first 6
 	/// bytes of the function with a jump instruction to the hook. This is destructive and means that the original function

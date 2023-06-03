@@ -19,8 +19,8 @@ public record NativeImport
 	public string? FunctionName { get; internal set; }
 	/// <summary>Relative virtual address of the function's entries in <see cref="Module"/>'s Import Address Table
 	/// <br/><br/>
-	/// It's possible that the same function appears more than once in the import table.
-	/// IAT RVAs of all occurrences of the same imported function are listed here.
+	/// It's possible that the same function appears more than once in the import table, so
+	/// IAT RVAs of all occurrences of the same imported function are included.
 	/// </summary>
 	public ReadOnlyCollection<uint> IAT_RVAs { get; internal set; }
 

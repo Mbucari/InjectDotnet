@@ -1,6 +1,6 @@
 ﻿namespace InjectDotnet.NativeHelper;
 
-/// <summary>And instance of a hooked native function</summary>
+/// <summary>An instance of a hooked native function</summary>
 public interface INativeHook
 {
 	/// <summary>Entry point of the function being hooked</summary>

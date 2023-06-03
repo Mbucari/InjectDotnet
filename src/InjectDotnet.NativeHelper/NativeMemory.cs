@@ -10,7 +10,7 @@ namespace InjectDotnet.NativeHelper
 		/// <see cref="MemoryBasicInformation.State"/>, and
 		/// <see cref="MemoryBasicInformation.Protect"/> are grouped together in a single <see cref="MemoryBasicInformation"/>.
 		/// </summary>
-		/// <param name="startAddress">The virtual address as which the enumeration begins</param>
+		/// <param name="startAddress">The virtual address at which the enumeration begins</param>
 		/// <returns>An enumerable collection of memory in this process' virtual address space.</returns>
 		public static IEnumerable<MemoryBasicInformation> EnumerateMemory(nint startAddress = 0)
 		{

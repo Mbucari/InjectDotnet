@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace InjectDotnet.NativeHelper;
 
-/// <summary>And instance of a hooked <see cref="NativeImport"/></summary>
+/// <summary>An instance of a hooked <see cref="NativeImport"/></summary>
 [DebuggerDisplay("{DebuggerDisplay,nq}")]
 public class ImportHook : INativeHook
 {
@@ -11,9 +11,9 @@ public class ImportHook : INativeHook
 	/// <summary>The <see cref="ProcessModule"/> whose import address table is modified to hook
 	/// calls to <see cref="OriginalFunction"/> in <see cref="ImportedModuleName"/></summary>
 	public ProcessModule HookedModule { get; }
-	/// <summary>FunctionName of the module containing the <see cref="OriginalFunction"/> that's been hooked</summary>
+	/// <summary>Name of the module containing the <see cref="OriginalFunction"/> that's being hooked</summary>
 	public string ImportedModuleName { get; }
-	/// <summary>FunctionName of the imported function that's been hooked</summary>
+	/// <summary>Name of the imported function that's being hooked</summary>
 	public string ImportedFunctionName { get; }
 	/// <summary>Entry point of <see cref="ImportedFunctionName"/></summary>
 	public nint OriginalFunction { get; private set; }
@@ -27,10 +27,10 @@ public class ImportHook : INativeHook
 		}
 	}
 
-	/// <summary>Address of the unmanaged delegate that is hooking <see cref="OriginalFunction"/></summary>
+	/// <summary>Address of the delegate that is hooking <see cref="OriginalFunction"/></summary>
 	private nint HookFunction { get; }
 	/// <summary>
-	/// Locations in <see cref="HookedModule"/>'s IAT that point to <see cref="OriginalFunction"/>
+	/// Locations in <see cref="HookedModule"/>'s IAT that points to <see cref="OriginalFunction"/>
 	/// </summary>
 	private nint[] IATEntries { get; }
 
@@ -96,10 +96,10 @@ public class ImportHook : INativeHook
 	}
 
 	/// <summary>
-	/// Create a <see cref="ImportHook"/> for a native function imported by a native library in this process.
+	/// Create an <see cref="ImportHook"/> for a native function imported by a native library in this process.
 	/// </summary>
-	/// <param name="import">The import in the current process to be hooked.</param>
-	/// <param name="hookFunction">Address of a managed delegate that will be called instead of <paramref name="importedFunctionName"/></param>
+	/// <param name="import">The imported function to be hooked.</param>
+	/// <param name="hookFunction">Address of a delegate that will be called instead of <see cref="NativeImport.FunctionName"/></param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Create(
 		NativeImport import,

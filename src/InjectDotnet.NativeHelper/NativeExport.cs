@@ -10,7 +10,7 @@ public record NativeExport
 {
 	/// <summary>The module exporting the function</summary>
 	public ProcessModule Module { get; }
-	/// <summary>Relative virtual address of the function's entry in <see cref="Module"/> Export Address Table</summary>
+	/// <summary>Relative virtual address of the function's entry in <see cref="Module"/>'s Export Address Table</summary>
 	public uint EAT_RVA { get; }
 	/// <summary>The function's export ordinal</summary>
 	public ushort Ordinal { get; }

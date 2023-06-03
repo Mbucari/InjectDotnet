@@ -3,7 +3,11 @@
     "SampleInjected": {
       "commandName": "Project"
     },
-    "DebugNative": {
+    "DebugNative_x64": {
+      "commandName": "Executable",
+      "executablePath": "C:\\Windows\\notepad.exe"
+    }
+    "DebugNative_x86": {
       "commandName": "Executable",
       "executablePath": "C:\\Windows\\notepad.exe"
     }

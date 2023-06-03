@@ -11,7 +11,7 @@ unsafe public static class NativeExtensions
 	/// Hook a native dll import with an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// </summary>
 	/// <param name="import">The import to hook</param>
-	/// <param name="hook">A pointer to either an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
+	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// with the same parameter signature as the native import</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Hook(this NativeImport? import, void* hook)
@@ -62,7 +62,6 @@ unsafe public static class NativeExtensions
 	/// <summary>
 	/// Hook a native dll export with a managed <see cref="Delegate"/>
 	/// </summary>
-	/// <typeparam name="TDelegate"></typeparam>
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
 	/// <remarks>
@@ -85,7 +84,7 @@ unsafe public static class NativeExtensions
 	}
 
 	/// <summary>
-	/// Get a function exported by <paramref name="procModule"/>
+	/// Get a function exported by a <see cref="ProcessModule"/>
 	/// </summary>
 	/// <param name="procModule">The module which exports <paramref name="exportedFunctionName"/></param>
 	/// <param name="exportedFunctionName">Name of the exported function</param>
@@ -94,7 +93,7 @@ unsafe public static class NativeExtensions
 		=> procModule?.GetModuleExports()?.SingleOrDefault(e => e.FunctionName == exportedFunctionName);
 
 	/// <summary>
-	/// Get a function imported by <paramref name="procModule"/>
+	/// Get a function imported by a <see cref="ProcessModule"/>
 	/// </summary>
 	/// <param name="procModule">The module which imports the function</param>
 	/// <param name="libraryName">Name of the imported library</param>
@@ -119,7 +118,7 @@ unsafe public static class NativeExtensions
 	/// Get <see cref="ProcessModule"/>s by <see cref="ProcessModule.ModuleName"/> or <see cref="ProcessModule.FileName"/>
 	/// </summary>
 	/// <param name="proc">The process whose modules are searched for matches</param>
-	/// <param name="libraryName">The name for filename of the module. Case insensitive and file extension is ignored.</param>
+	/// <param name="libraryName">The ModuleName or FileName of the module. Case insensitive and file extension is ignored.</param>
 	/// <returns>All modules with matching names</returns>
 	public static IEnumerable<ProcessModule> GetModulesByName(this Process proc, string libraryName)
 	{
@@ -134,9 +133,9 @@ unsafe public static class NativeExtensions
 	}
 
 	/// <summary>
-	/// Geta all functions imported by <paramref libraryName="procModule"/> in this process.
+	/// Geta all functions imported by a <see cref="ProcessModule"/>
 	/// </summary>
-	/// <param libraryName="procModule">The <see cref="ProcessModule"/> from which imports are read</param>
+	/// <param name="procModule">The <see cref="ProcessModule"/> from which imports are read</param>
 	/// <remarks>
 	/// When the PE is loaded, FirstThunk (aka Import Address Table) is overwritten with
 	/// the addresses of the symbols that are being imported, which is why import libraryName RVAs
@@ -146,7 +145,7 @@ unsafe public static class NativeExtensions
 	/// Contain an Import Lookup Table. The only way to guarantee that imported function
 	/// names can be resolved is by reading from the PE file's Import Address Table.
 	/// </remarks>
-	/// <returns>If successful, a list of all functions imported by <paramref libraryName="procModule"/></returns>
+	/// <returns>If successful, a list of all functions imported by <paramref name="procModule"/></returns>
 	public static List<NativeImport>? GetModuleImports(this ProcessModule? procModule)
 	{
 		if (procModule?.FileName is null) return null;
@@ -176,7 +175,7 @@ unsafe public static class NativeExtensions
 			//PE section containing the IAT for this import descriptor.
 			//The import directory is contiguous and must be inside a single section.
 			//Each import's Import Address Table is contiguous and must be inside a single section.
-			//However, the IATs for all imports are non-contiguous and may be stored in different sections.
+			//However, the IATs for all imports are not guaranteed to be contiguous and may be stored in different sections.
 			var importSection =
 				imageSections.Single(s =>
 					imgImpDes.FirstThunk >= s.VirtualAddress &&
@@ -235,10 +234,10 @@ unsafe public static class NativeExtensions
 	}
 
 	/// <summary>
-	/// Get all functions exported by <paramref libraryName="procModule"/> in this process.
+	/// Get all functions exported by a <see cref="ProcessModule"/>
 	/// </summary>
-	/// <param libraryName="procModule">The <see cref="ProcessModule"/> from which imports are read</param>
-	/// <returns>If successful, a list of all functions exported by <paramref libraryName="procModule"/></returns>
+	/// <param name="procModule">The <see cref="ProcessModule"/> from which imports are read</param>
+	/// <returns>If successful, a list of all functions exported by <paramref name="procModule"/></returns>
 	public static List<NativeExport>? GetModuleExports(this ProcessModule? procModule)
 	{
 		if (procModule?.FileName is null) return null;
@@ -302,9 +301,9 @@ unsafe public static class NativeExtensions
 	/// <summary>
 	/// Loads PE information for a module in the executing process
 	/// </summary>
-	/// <param libraryName="module">A <see cref="ProcessModule"/> in the executing process</param>
-	/// <param libraryName="dataDirectories">All image data directories</param>
-	/// <param libraryName="secHeaders">All image section headers</param>
+	/// <param name="module">A <see cref="ProcessModule"/> in the executing process</param>
+	/// <param name="dataDirectories">All image data directories</param>
+	/// <param name="secHeaders">All image section headers</param>
 	private unsafe static void ReadDirectoriesAndSections(
 		ProcessModule module,
 		out ImageDataDirectory[] dataDirectories,
