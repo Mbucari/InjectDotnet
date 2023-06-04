@@ -26,6 +26,7 @@
 *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper.Minhook;
@@ -65,9 +66,9 @@ struct hde32s : IHde
 
 	unsafe public static uint hde32_disasm(byte* code, hde32s* hs)
 	{
-		using var memhandle = hde32_table_array.AsMemory().Pin();
+		byte* hde32_table = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(hde32_table_array));
 		byte x, c = 0, cflags, opcode, pref = 0;
-		byte* p = code, ht = (byte*)memhandle.Pointer, hde32_table = ht;
+		byte* p = code, ht = hde32_table;
 		byte m_mod, m_reg, m_rm, disp_size = 0;
 		bool rel32_ok_bool = false;
 

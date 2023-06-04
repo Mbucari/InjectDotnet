@@ -32,7 +32,8 @@ namespace InjectDotnet.NativeHelper.Minhook;
 
 internal unsafe class Trampoline
 {
-	private static int TRAMPOLINE_MAX_SIZE = IntPtr.Size == 8 ? IntPtr.Size * 8 - sizeof(JMP_ABS) : IntPtr.Size * 8;
+	private static readonly int TRAMPOLINE_MAX_SIZE
+		= IntPtr.Size == 8 ? IntPtr.Size * 8 - sizeof(JMP_ABS) : IntPtr.Size * 8;
 
 	/// <summary>
 	/// [In] Address of the target function.
@@ -113,23 +114,13 @@ internal unsafe class Trampoline
 				// Complete the function with the jump to the target function.
 				if (Environment.Is64BitProcess)
 				{
-					var jmp = new JMP_ABS
-					{
-						opcode0 = 0xFF,
-						opcode1 = 0x25,
-						address = (ulong)pOldInst
-					};
+					var jmp = new JMP_ABS(pOldInst);
 					pCopySrc = &jmp;
 					copySize = (uint)sizeof(JMP_ABS);
 				}
 				else
 				{
-					var jmp = new JMP_REL
-					{
-						opcode = 0xE9,
-						operand = (uint)(pOldInst - (pNewInst + sizeof(JMP_REL)))
-					};
-
+					var jmp = new JMP_REL(pOldInst, pNewInst);
 					pCopySrc = &jmp;
 					copySize = (uint)sizeof(JMP_REL);
 				}
@@ -177,10 +168,9 @@ internal unsafe class Trampoline
 				}
 				else
 				{
-					var call = new JMP_REL
+					var call = new JMP_REL(dest, pNewInst)
 					{
-						opcode = 0xE8,
-						operand = (uint)(dest - (pNewInst + sizeof(JMP_REL)))
+						opcode = 0xE8 //Call
 					};
 
 					pCopySrc = &call;
@@ -208,22 +198,13 @@ internal unsafe class Trampoline
 				{
 					if (Environment.Is64BitProcess)
 					{
-						var jmp = new JMP_ABS
-						{
-							opcode0 = 0xFF,
-							opcode1 = 0x25,
-							address = (ulong)dest
-						};
+						var jmp = new JMP_ABS(dest);
 						pCopySrc = &jmp;
 						copySize = (uint)sizeof(JMP_ABS);
 					}
 					else
 					{
-						var jmp = new JMP_REL
-						{
-							opcode = 0xE9,
-							operand = (uint)(dest - (pNewInst + sizeof(JMP_REL)))
-						};
+						var jmp = new JMP_REL(dest, pNewInst);
 						pCopySrc = &jmp;
 						copySize = (uint)sizeof(JMP_REL);
 					}
@@ -327,16 +308,41 @@ internal unsafe class Trampoline
 internal struct JMP_REL
 {
 	public byte opcode;      // E9/E8 xxxxxxxx: JMP/CALL +5+xxxxxxxx
-	public uint operand;     // Relative destination address
+	public readonly uint operand;     // Relative destination address
+	/// <param name="address">Address to jump to</param>
+	/// <param name="jmpIP">IP of this jmp instruction for x86, 0 for x64</param>
+	public JMP_REL(nint address, nint jmpIP)
+	{
+		opcode = 0xE9;
+		operand = (uint)(address - jmpIP - sizeof(byte) - sizeof(uint));
+	}
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-internal struct JMP_ABS
+internal readonly struct JMP_ABS
 {
-	public byte opcode0;     // FF25 00000000: JMP [+6]
-	public byte opcode1;
-	public uint dummy;
-	public ulong address;     // Absolute destination address
+	/// <summary>
+	/// FF25 00000000: JMP [+6]
+	/// </summary>
+	private readonly ushort opcodes = 0x25FF;
+	/// <summary>
+	/// x64: RIP Offset to <see cref="address"/>
+	/// <br/>
+	/// x86: Location of <see cref="address"/>
+	/// </summary>
+	private readonly uint dummy;
+	/// <summary>
+	/// Absolute destination address
+	/// </summary>
+	public readonly nint address;
+
+	/// <param name="address">Address to jump to</param>
+	/// <param name="jmpIP">IP of this jmp instruction for x86, 0 for x64</param>
+	public JMP_ABS(nint address, uint jmpIP = 0)
+	{
+		this.address = address;
+		dummy = jmpIP == 0 ? 0 : jmpIP + sizeof(ushort) + sizeof(uint);
+	}
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]

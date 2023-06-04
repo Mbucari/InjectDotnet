@@ -135,15 +135,26 @@ public readonly struct MemoryBasicInformation
 	internal unsafe static int NativeSize => sizeof(MemoryBasicInformation);
 
 	private static nint granularityMask;
+	private static SystemInfo? systemInfo;
 	private static nint GetGranularityMask()
 	{
 		if (granularityMask == 0)
 		{
-			NativeMethods.GetSystemInfo(out var si);
-			granularityMask = (nint)si.AllocationGranularity - 1;
+			granularityMask = (nint)GetSystemInfo().AllocationGranularity - 1;
 		}
 		return granularityMask;
 	}
+	private static SystemInfo GetSystemInfo()
+	{
+		if (systemInfo is null)
+		{
+			NativeMethods.GetSystemInfo(out var si);
+			systemInfo = si;
+		}
+		return systemInfo.Value;
+	}
+
+	public static SystemInfo SystemInfo => GetSystemInfo();
 
 	/// <summary>
 	/// The <see cref="BaseAddress"/> rounded up to the nearest multiple of the allocation granularity

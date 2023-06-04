@@ -12,7 +12,7 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="import">The import to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
-	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
 	/// with the same parameter signature as the native import</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Hook(this NativeImport? import, void* hook, bool installAfterCreate = true)
@@ -27,7 +27,7 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="import">The import to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native import</param>
-	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Hook<TDelegate>(this NativeImport? import, TDelegate hook, bool installAfterCreate = true)
 		where TDelegate : Delegate
@@ -43,18 +43,7 @@ unsafe public static class NativeExtensions
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// with the same parameter signature as the native export</param>
-	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
-	/// <remarks>
-	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
-	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
-	/// the EAT after the PE is loaded will have no effect. Instead, Hooking is accomplished by replacing the first 6
-	/// bytes of the function with a jump instruction to the hook. This is destructive and means that the original function
-	/// cannot be called until the hook is removed.
-	/// <br /><br />
-	/// If the export points to an entry in a jump table, you may work around this limitation by creating a delegate for the
-	/// original function at the target of that jump. Many winapi functions exported by kernel32, for instance, are jumps to
-	/// identically named functions in kernelbase.
-	/// </remarks>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
 	public static ExportHook? Hook(this NativeExport? export, void* hook, bool installAfterCreate = true)
 	{
@@ -68,18 +57,7 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
-	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
-	/// <remarks>
-	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
-	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
-	/// the EAT after the PE is loaded will have no effect. Instead, Hooking is accomplished by replacing the first 6
-	/// bytes of the function with a jump instruction to the hook. This is destructive and means that the original function
-	/// cannot be called until the hook is removed.
-	/// <br /><br />
-	/// If the export points to an entry in a jump table, you may work around this limitation by creating a delegate for the
-	/// original function at the target of that jump. Many winapi functions exported by kernel32, for instance, are jumps to
-	/// identically named functions in kernelbase.
-	/// </remarks>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
 	public static ExportHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook, bool installAfterCreate = true)
 		where TDelegate : Delegate

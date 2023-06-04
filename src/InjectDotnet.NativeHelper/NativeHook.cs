@@ -29,11 +29,11 @@ unsafe public class NativeHook : INativeHook
 	/// installing the hook is not thread safe.
 	/// </summary>
 	public bool HasTrampoline => m_Trampoline is not null;
-
 	/// <summary>
 	/// E/W/R memory located within 2^32 bytes of <see cref="OriginalFunction"/> that stores the hook jump instruction and trampoline
 	/// </summary>
 	public nint MemoryBlock { get; }
+
 	/// <summary>
 	/// The trampoline that was written for this hook.
 	/// </summary>
@@ -55,59 +55,53 @@ unsafe public class NativeHook : INativeHook
 		HookFunction = hookFunction;
 		MemoryBlock = memoryBlock;
 
+		//Hook status is set at base of block
+		memoryBlock++;
 		if (Environment.Is64BitProcess)
 		{
 			//push rax
-			*(byte*)(memoryBlock + 1) = 0x50;
+			*(byte*)memoryBlock = 0x50;
 			//mov al, [memoryBlock]
-			*(ushort*)(memoryBlock + 2) = 0x058a;
-			*(int*)(memoryBlock + 4) = -8;
+			*(ushort*)(memoryBlock += sizeof(byte)) = 0x058a;
+			*(int*)(memoryBlock += sizeof(ushort)) = -8;
 			//test al,al
-			*(ushort*)(memoryBlock + 8) = 0xc084;
+			*(ushort*)(memoryBlock += sizeof(int)) = 0xc084;
 			//pop rax
-			*(byte*)(memoryBlock + 10) = 0x58;
+			*(byte*)(memoryBlock += sizeof(ushort)) = 0x58;
 			//je over hook to trampoline
-			*(byte*)(memoryBlock + 11) = 0x74;
-			*(byte*)(memoryBlock + 12) = (byte)(6 + sizeof(nint));
+			*(byte*)(memoryBlock += sizeof(byte)) = 0x74;
+			*(byte*)(memoryBlock += sizeof(byte)) = (byte)sizeof(JMP_ABS);
 
-			m_pHookJump = memoryBlock + 13;
-			//long jmp to the hook
-			*(ushort*)m_pHookJump = 0x25ff;
-			*(uint*)(m_pHookJump + 2) = 0;
-			*(nint*)(m_pHookJump + 6) = hookFunction;
+			m_pHookJump = memoryBlock + sizeof(byte);
+			*(JMP_ABS*)m_pHookJump = new JMP_ABS(hookFunction);
 		}
 		else
 		{
 			//push eax
-			*(byte*)(memoryBlock + 1) = 0x50;
+			*(byte*)memoryBlock = 0x50;
 			//mov al, [memoryBlock]
-			*(byte*)(memoryBlock + 2) = 0xa0;
-			*(uint*)(memoryBlock + 3) = (uint)memoryBlock;
+			*(byte*)(memoryBlock += sizeof(byte)) = 0xa0;
+			*(uint*)(memoryBlock += sizeof(byte)) = (uint)memoryBlock;
 			//test al,al
-			*(ushort*)(memoryBlock + 7) = 0xc084;
+			*(ushort*)(memoryBlock += sizeof(uint)) = 0xc084;
 			//pop eax
-			*(byte*)(memoryBlock + 9) = 0x58;
+			*(byte*)(memoryBlock += sizeof(ushort)) = 0x58;
 			//je over hook to trampoline
-			*(byte*)(memoryBlock + 10) = 0x74;
-			*(byte*)(memoryBlock + 11) = (byte)(6 + sizeof(nint));
+			*(byte*)(memoryBlock += sizeof(byte)) = 0x74;
+			*(byte*)(memoryBlock += sizeof(byte)) = (byte)sizeof(JMP_ABS);
 
-			m_pHookJump = memoryBlock + 12;
-			//long jmp to the hook
-			*(ushort*)m_pHookJump = 0x25ff;
-			*(uint*)(m_pHookJump + 2) = (uint)m_pHookJump + 6;
-			*(nint*)(m_pHookJump + 6) = hookFunction;
+			m_pHookJump = memoryBlock + sizeof(byte);
+			*(JMP_ABS*)m_pHookJump = new JMP_ABS(hookFunction, (uint)m_pHookJump);
 		}
 
-		if (Trampoline.Create(originalFunc, m_pHookJump + 6 + sizeof(nint)) is Trampoline trampoline)
+		if ((m_Trampoline = Trampoline.Create(originalFunc, m_pHookJump + sizeof(JMP_ABS))) is not null)
 		{
-			m_Trampoline = trampoline;
-			OriginalFunction = trampoline.TrampolineAddress;
+			OriginalFunction = m_Trampoline.TrampolineAddress;
 
 			//Overwrite the target's entry point with a jump the pop eax/rax instruction at MemoryBlock + 1
 			MemoryProtection oldProtect;
 			NativeMethods.VirtualProtect(originalFunc, sizeof(nint), MemoryProtection.ExecuteReadWrite, &oldProtect);
-			*(byte*)originalFunc = 0xE9; //jmp rel
-			*(uint*)(originalFunc + 1) = (uint)(memoryBlock - originalFunc + 1 - 5 /* jump instruction size*/);
+			*(JMP_REL*)originalFunc = new JMP_REL(MemoryBlock + 1, originalFunc);
 			//Restore IAT's protection
 			NativeMethods.VirtualProtect(originalFunc, sizeof(nint), oldProtect, &oldProtect);
 		}
@@ -120,7 +114,7 @@ unsafe public class NativeHook : INativeHook
 		}
 	}
 
-	public bool InstallHook()
+	public virtual bool InstallHook()
 	{
 		lock (this)
 		{
@@ -135,16 +129,19 @@ unsafe public class NativeHook : INativeHook
 			{
 				//Trampoline not in use, so overwrite target function's entry point with a jump the the jump to the hook
 				MemoryProtection oldProtect;
-				NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), MemoryProtection.ExecuteReadWrite, &oldProtect);
-				*(ulong*)OriginalFunction = ((ulong)(m_pHookJump - OriginalFunction - 5) << 8) | 0xE9;
-				//Restore IAT's protection
-				NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), oldProtect, &oldProtect);
+				if (!NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), MemoryProtection.ExecuteReadWrite, &oldProtect))
+					return false;
+
+				*(JMP_REL*)OriginalFunction = new JMP_REL(m_pHookJump, OriginalFunction);
+
+				if (!NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), oldProtect, &oldProtect))
+					return false;
 			}
 			return isHooked = true;
 		}
 	}
 
-	public bool RemoveHook()
+	public virtual bool RemoveHook()
 	{
 		lock (this)
 		{
@@ -159,10 +156,13 @@ unsafe public class NativeHook : INativeHook
 			{
 				//Trampoline not in use, so replace target function's original entry point bytes
 				MemoryProtection oldProtect;
-				NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), MemoryProtection.ExecuteReadWrite, &oldProtect);
+				if (!NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), MemoryProtection.ExecuteReadWrite, &oldProtect))
+					return false;
+
 				*(ulong*)OriginalFunction = m_OriginalEpBytes;
-				//Restore IAT's protection
-				NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), oldProtect, &oldProtect);
+
+				if (!NativeMethods.VirtualProtect(OriginalFunction, sizeof(ulong), oldProtect, &oldProtect))
+					return false;
 			}
 
 			return !(isHooked = false);
@@ -174,32 +174,34 @@ unsafe public class NativeHook : INativeHook
 	/// </summary>
 	/// <param name="nativeFunctionEntryPoint">Entry point of an unmanaged function</param>
 	/// <param name="hookFunction">Address of a delegate that will be called instead of <paramref name="nativeFunctionEntryPoint"/></param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
 	/// <returns>A valid <see cref="NativeHook"/> if successful</returns>
 	public static NativeHook? Create(
 		nint nativeFunctionEntryPoint,
-		nint hookFunction)
+		nint hookFunction,
+		bool installAfterCreate = true)
 	{
 		if (nativeFunctionEntryPoint == 0 || hookFunction == 0) return null;
 
 		NativeMethods.VirtualQuery(nativeFunctionEntryPoint, out var mbi, MemoryBasicInformation.NativeSize);
 
-		if (mbi.Protect
-			is not MemoryProtection.Execute
-			and not MemoryProtection.ExecuteRead
-			and not MemoryProtection.ExecuteReadWrite
-			and not MemoryProtection.ExecuteWriteCopy)
+		if (!(mbi.Protect
+			is MemoryProtection.Execute
+			or MemoryProtection.ExecuteRead
+			or MemoryProtection.ExecuteReadWrite
+			or MemoryProtection.ExecuteWriteCopy))
 			return null;
 
-		nint memoryBlock = AllocatePointerNearBase(nativeFunctionEntryPoint);
+		nint memoryBlock = AllocateMemoryNearBase(nativeFunctionEntryPoint);
 		if (memoryBlock == 0) return null;
 
 		var hook = new NativeHook(nativeFunctionEntryPoint, memoryBlock, hookFunction);
 
-		return hook.InstallHook() ? hook : null;
+		return !installAfterCreate || hook.InstallHook() ? hook : null;
 	}
 
 	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
-	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
+	protected virtual string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 
 	public override string ToString() => $"{OriginalFunction.ToString($"x{IntPtr.Size}")}";
 
@@ -210,12 +212,16 @@ unsafe public class NativeHook : INativeHook
 	/// </summary>
 	/// <param name="baseAddress">Address in virtual to begin searching for a free memory block</param>
 	/// <returns>A pointer to the beginning of the free memory block</returns>
-	protected static nint AllocatePointerNearBase(nint baseAddress)
+	protected static nint AllocateMemoryNearBase(nint baseAddress)
 	{
 		nint minSize = sizeof(nint);
 		var pHookFn = NativeMemory.FirstFreeAddress(baseAddress, ref minSize);
 		if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue) return 0;
-
-		return NativeMethods.VirtualAlloc(pHookFn, sizeof(nint), AllocationType.ReserveCommit, MemoryProtection.ExecuteReadWrite);
+		
+		return NativeMethods.VirtualAlloc(
+			pHookFn,
+			(nint)MemoryBasicInformation.SystemInfo.PageSize,
+			AllocationType.ReserveCommit,
+			MemoryProtection.ExecuteReadWrite);
 	}
 }

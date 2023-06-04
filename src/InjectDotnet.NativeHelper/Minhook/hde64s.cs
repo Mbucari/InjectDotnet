@@ -26,6 +26,7 @@
 *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper.Minhook;
@@ -70,15 +71,11 @@ internal struct hde64s : IHde
 
 	unsafe public static uint hde64_disasm(byte* code, hde64s* hs)
 	{
+		byte* hde64_table = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(hde64_table_array));
 		byte x, c = 0, cflags = 0, opcode, pref = 0;
-
-		using var memhandle = hde64_table_array.AsMemory().Pin();
-
-		bool rel32_ok_bool = false, imm16_ok_bool = false;
-		bool errorOpcode = false;
-
-		byte* p = code, ht = (byte*)memhandle.Pointer, hde64_table = ht;
+		byte* p = code, ht = hde64_table;
 		byte m_mod, m_reg, m_rm, disp_size = 0, op64 = 0;
+		bool error_opcode_bool = false, rel32_ok_bool = false, imm16_ok_bool = false;
 
 		*hs = new hde64s();
 
@@ -135,7 +132,7 @@ internal struct hde64s : IHde
 			if (((c = *p++) & 0xf0) == 0x40)
 			{
 				opcode = c;
-				errorOpcode = true;
+				error_opcode_bool = true;
 				goto error_opcode;
 			}
 		}
@@ -161,7 +158,7 @@ internal struct hde64s : IHde
 
 	error_opcode:
 
-		if (errorOpcode || cflags == C_ERROR)
+		if (error_opcode_bool || cflags == C_ERROR)
 		{
 			hs->flags |= F_ERROR | F_ERROR_OPCODE;
 			cflags = 0;
