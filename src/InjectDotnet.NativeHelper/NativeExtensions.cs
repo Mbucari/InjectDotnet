@@ -12,13 +12,14 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="import">The import to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
 	/// with the same parameter signature as the native import</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
-	public static ImportHook? Hook(this NativeImport? import, void* hook)
+	public static ImportHook? Hook(this NativeImport? import, void* hook, bool installAfterCreate = true)
 	{
 		var hookPointer = (nint)hook;
 		if (import is null || hookPointer == 0) return null;
-		return ImportHook.Create(import, hookPointer);
+		return ImportHook.Create(import, hookPointer, installAfterCreate);
 	}
 
 	/// <summary>
@@ -26,12 +27,14 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="import">The import to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native import</param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
-	public static ImportHook? Hook<TDelegate>(this NativeImport? import, TDelegate hook) where TDelegate : Delegate
+	public static ImportHook? Hook<TDelegate>(this NativeImport? import, TDelegate hook, bool installAfterCreate = true)
+		where TDelegate : Delegate
 	{
 		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
 		if (import is null || hookPointer == 0) return null;
-		return ImportHook.Create(import, hookPointer);
+		return ImportHook.Create(import, hookPointer, installAfterCreate);
 	}
 
 	/// <summary>
@@ -40,6 +43,7 @@ unsafe public static class NativeExtensions
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// with the same parameter signature as the native export</param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
 	/// <remarks>
 	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
 	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
@@ -52,11 +56,11 @@ unsafe public static class NativeExtensions
 	/// identically named functions in kernelbase.
 	/// </remarks>
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
-	public static ExportHook? Hook(this NativeExport? export, void* hook)
+	public static ExportHook? Hook(this NativeExport? export, void* hook, bool installAfterCreate = true)
 	{
 		var hookPointer = (nint)hook;
 		if (export is null || hookPointer == 0) return null;
-		return ExportHook.Create(export, hookPointer);
+		return ExportHook.Create(export, hookPointer, installAfterCreate);
 	}
 
 	/// <summary>
@@ -64,6 +68,7 @@ unsafe public static class NativeExtensions
 	/// </summary>
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/>() returns true</param>
 	/// <remarks>
 	/// While imports can be hooked by changing the function pointer in the module's IAT, exports can't be hooked so simply.
 	/// A module's Export Address Table is read only once when the image is bound, so changing the function's address in
@@ -76,11 +81,12 @@ unsafe public static class NativeExtensions
 	/// identically named functions in kernelbase.
 	/// </remarks>
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
-	public static ExportHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook) where TDelegate : Delegate
+	public static ExportHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook, bool installAfterCreate = true)
+		where TDelegate : Delegate
 	{
 		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
 		if (export is null || hookPointer == 0) return null;
-		return ExportHook.Create(export, hookPointer);
+		return ExportHook.Create(export, hookPointer, installAfterCreate);
 	}
 
 	/// <summary>
@@ -304,7 +310,7 @@ unsafe public static class NativeExtensions
 	/// <param name="module">A <see cref="ProcessModule"/> in the executing process</param>
 	/// <param name="dataDirectories">All image data directories</param>
 	/// <param name="secHeaders">All image section headers</param>
-	private unsafe static void ReadDirectoriesAndSections(
+	private static void ReadDirectoriesAndSections(
 		ProcessModule module,
 		out ImageDataDirectory[] dataDirectories,
 		out ImageSectionHeader[] secHeaders)

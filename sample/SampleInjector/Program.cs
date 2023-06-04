@@ -15,9 +15,11 @@ internal unsafe class Program
 {
 	static void Main(string[] args)
 	{
-		var notepads = Process.GetProcessesByName("notepad");
+		//Change the process names to your targets. I used Win64's notepad for 64-bit testing and HxD hex editor for 32-bit testing.
+		//Be sure to set the target paths in SampleInjected/Properties/launchSettings.json
+		var proc = Environment.Is64BitProcess? Process.GetProcessesByName("notepad"): Process.GetProcessesByName("HxD32");
 
-		var target = notepads.Length == 0 ? Process.Start("notepad.exe") : notepads[0];
+		var target = proc[^1];
 
 		var picBytes = File.ReadAllBytes("dotnet.png");
 

@@ -16,7 +16,7 @@ public static class NativeMethods
 	public static extern nint VirtualAlloc(nint lpAddress, nint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
 
 	[DllImport(KERNEL32, SetLastError = true)]
-	public static unsafe extern int VirtualQuery(nint lpAddress, out MemoryBasicInformation lpBuffer, int dwLength);
+	public static extern int VirtualQuery(nint lpAddress, out MemoryBasicInformation lpBuffer, int dwLength);
 
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern void GetSystemInfo(out SystemInfo lpSystemInfo);

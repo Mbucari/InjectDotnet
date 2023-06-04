@@ -28,7 +28,7 @@ public class ImportHook : INativeHook
 	}
 
 	/// <summary>Address of the delegate that is hooking <see cref="OriginalFunction"/></summary>
-	private nint HookFunction { get; }
+	public nint HookFunction { get; }
 	/// <summary>
 	/// Locations in <see cref="HookedModule"/>'s IAT that points to <see cref="OriginalFunction"/>
 	/// </summary>
@@ -103,7 +103,8 @@ public class ImportHook : INativeHook
 	/// <returns>A valid <see cref="ImportHook"/> if successful</returns>
 	public static ImportHook? Create(
 		NativeImport import,
-		nint hookFunction)
+		nint hookFunction,
+		bool installAfterCreate = true)
 	{
 		if (hookFunction == 0 || import.IAT_RVAs.Count is 0) return null;
 
@@ -117,7 +118,7 @@ public class ImportHook : INativeHook
 
 		var hook = new ImportHook(import.Module, import.Library, funcName, hookFunction, iatEntries);
 
-		return hook.InstallHook() ? hook : null;
+		return !installAfterCreate || hook.InstallHook() ? hook : null;
 	}
 
 	[DebuggerBrowsable(DebuggerBrowsableState.Never)]

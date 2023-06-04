@@ -16,9 +16,10 @@ public class ExportHook : NativeHook
 	private ExportHook(
 		string exportingModuleName,
 		string exportFunctionName,
-		nint hExportFunc,
-		nint pHookFunc)
-		: base(hExportFunc, pHookFunc)
+		nint originalFunc,
+		nint hookFunction,
+		nint memoryBlock)
+		: base(originalFunc, hookFunction, memoryBlock)
 	{
 		ExportingModuleName = exportingModuleName;
 		ExportedFunctionName = exportFunctionName;
@@ -43,7 +44,8 @@ public class ExportHook : NativeHook
 	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
 	unsafe public static ExportHook? Create(
 		NativeExport export,
-		nint hookFunction)
+		nint hookFunction,
+		bool installAfterCreate = true)
 	{
 		if (hookFunction == 0 ||
 			(export.Module.FileName ?? export.Module.ModuleName) is not string moduleName ||
@@ -57,15 +59,13 @@ public class ExportHook : NativeHook
 		else
 			return null;
 
-		nint pHookFunc = AllocatePointerNearBase(hExportFunc);
-		if (pHookFunc == 0) return null;
+		nint memBlock = AllocatePointerNearBase(hExportFunc);
+		if (memBlock == 0) return null;
 
-		*(nint*)pHookFunc = hookFunction;
-
-		var hook = new ExportHook(Path.GetFileName(moduleName), exportFuncName, hExportFunc, pHookFunc);
+		var hook = new ExportHook(Path.GetFileName(moduleName), exportFuncName, hExportFunc, hookFunction, memBlock);
 
 		//Do not free hModule
-		return hook.InstallHook() ? hook : null;
+		return !installAfterCreate || hook.InstallHook() ? hook : null;
 	}
 
 	public override string ToString()

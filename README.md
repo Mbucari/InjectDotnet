@@ -52,7 +52,7 @@ static bool WriteFile_hook(
 ```
 ## Hooking Exported Functions
 
-Hooking exports is accomplished by overwriting the original function's entry point instructions with a jump to the hook delegate. The delegate can be either an `[UnmanagedCallersOnly]` method or a managed delegate with the same signature as the exported function. This is a destructive act and, unlike hooked imports, the original function cannot be called without first removing the hook via `ExportHook.RemoveHook()`. If the export points to an entry in a jump table, however, you may work around this limitation by creating a delegate for the original function at the target of that jump. Many Winapi functions exported by kernel32, for instance, are jumps to identically named functions in kernelbase.
+Hooking exports is accomplished by overwriting the original function's entry point instructions with a jump to a block of memory allocated nearby. NativeHelper will attempt to create a trampoline (using a C# port of [minhook](https://github.com/TsudaKageyu/minhook)). If successdul, the original function may be called without removing the hook. If trampoline creation failed, the hook must be removed via `RemoveHook()` before calling the original function. See the `HasTrampoline` property. In both cases, calls to the original function will jump to the hook delegate when the hook is installed. The delegate can be either an `[UnmanagedCallersOnly]` method or a managed delegate with the same signature as the exported function.
 
 In the sample, all calls to `CreateFileW` within notepad.exe's process will call `CreateFileW_hook`. `CreateFileW_hook` peeks at the parameters, calls `Kernelbase.CreateFileW`,  and then returns the file handle.
 
@@ -102,6 +102,9 @@ static IntPtr CreateFileW_hook(
     return result;
 }
 ```
+## Hooking Arbitrary Addresses
+
+You may install a hook at any address using `NativeHook.Create()`. `NativeHook` is the base class of `ExportHook`, and they behave identically.
 
 ## See the samples for useage.
 There are two sample projects:

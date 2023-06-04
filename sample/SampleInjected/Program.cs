@@ -64,6 +64,7 @@ internal unsafe static class Program
 			?.GetImportByName("kernel32", "WriteFile")
 			?.Hook(WriteFile_hook);
 
+		//Create a managed delegate for the original kernel32.WriteFile that can be called from inside the hook
 		if (WriteFileHook is not null)
 			WriteFile_original = Marshal
 			.GetDelegateForFunctionPointer<WriteFileDelegate>(WriteFileHook.OriginalFunction);
@@ -77,12 +78,20 @@ internal unsafe static class Program
 			.GetModulesByName("kernel32")
 			.FirstOrDefault()
 			?.GetExportByName("CreateFileW")
-			?.Hook(hook2);
+			?.Hook(hook2, installAfterCreate: false);
+		//Some highly-trafficed functions may be called after the hook is installed but
+		//before the delegate to the original funciton is created. You can iliminate that
+		//race condition by using the installAfterCreate = false option, then installing
+		//the hook after the delegate has been created.
 
-		//kernel32.CreateFileW forwards to kernelbase.CreateFileW;
-		CreateFileW_original =
-			(delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)
-			NativeLibrary.GetExport(NativeLibrary.Load("kernelbase"), "CreateFileW");
+		if (CreateFileWHook?.OriginalFunction is not null or 0)
+		{
+			CreateFileW_original =
+				(delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)
+				CreateFileWHook.OriginalFunction;
+
+			CreateFileWHook.InstallHook();
+		}
 
 		Application.Run(form);
 
@@ -103,9 +112,14 @@ internal unsafe static class Program
 	{
 		var fileName = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)lpFileName));
 
+		if (!CreateFileWHook!.HasTrampoline)
+		{
+			//Trampoline was not created, so remove hook before calling original
+			CreateFileWHook!.RemoveHook();
+		}
+
 		var result
-			= CreateFileW_original is null ? IntPtr.Zero
-			: CreateFileW_original(
+			= CreateFileW_original(
 				lpFileName,
 				dwDesiredAccess,
 				dwShareMode,
@@ -113,6 +127,12 @@ internal unsafe static class Program
 				dwCreationDisposition,
 				dwFlagsAndAttributes,
 				hTemplateFile);
+
+		if (!CreateFileWHook.HasTrampoline)
+		{
+			//Trampoline was not created, so reinstall hook after calling original
+			CreateFileWHook.InstallHook();
+		}
 
 		return result;
 	}
@@ -146,9 +166,6 @@ internal unsafe static class Program
 			//Lie to the caller about the number of bytes written
 			NumberOfBytesWritten = nNumberOfBytesToWrite;
 		}
-
-		//Remove the import hook
-		WriteFileHook!.RemoveHook();
 
 		return result;
 	}
