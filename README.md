@@ -108,7 +108,7 @@ You may install a hook at any address using `NativeHook.Create()`. `NativeHook` 
 
 ## See the samples for useage.
 There are two sample projects:
-- **SampleInjected** - A .NET 6.0 program to be injected into a native process and uses `InjectDotnet.NativeHelper` to hook native functions.
+- **SampleInjected** - A .NET 6.0 dll to be injected into a native process and uses `InjectDotnet.NativeHelper` to hook native functions.
 - **SampleInjector** - The program that uses `InjectDotnet` to inject `SampleInjected` into Windows notepad.exe and pass it two strings and a png image as arguments. Executes `SampleInjected.Program.Bootstrap` after injection. 
 
 `SampleInjected.Program.Bootstrap` loads the two strings and the png image from native memory, frees the native memory, and then opens a `System.Windows.Forms.Form` to display the strings and image.
