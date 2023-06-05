@@ -7,7 +7,7 @@ public static class NativeMethods
 	private const string KERNEL32 = "Kernel32.dll";
 
 	[DllImport(KERNEL32, SetLastError = true)]
-	public static extern IntPtr GetProcAddress(nint hModule, ushort ordinal);
+	public static extern nint GetProcAddress(nint hModule, ushort ordinal);
 
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static unsafe extern bool VirtualProtect(nint handle, nint size, MemoryProtection newProtect, MemoryProtection* oldProtect);

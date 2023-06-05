@@ -1,5 +1,6 @@
 ﻿using InjectDotnet.NativeHelper.Minhook;
 using InjectDotnet.NativeHelper.Native;
+using System;
 using System.Diagnostics;
 
 namespace InjectDotnet.NativeHelper;
@@ -217,7 +218,7 @@ unsafe public class NativeHook : INativeHook
 		nint minSize = sizeof(nint);
 		var pHookFn = NativeMemory.FirstFreeAddress(baseAddress, ref minSize);
 		if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue) return 0;
-		
+
 		return NativeMethods.VirtualAlloc(
 			pHookFn,
 			(nint)MemoryBasicInformation.SystemInfo.PageSize,

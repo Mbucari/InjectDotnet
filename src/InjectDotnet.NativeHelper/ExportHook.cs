@@ -1,4 +1,5 @@
 ﻿using InjectDotnet.NativeHelper.Native;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper;

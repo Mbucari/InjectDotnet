@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Title>InjectDotnet</Title>
-	<Version>0.1.2</Version>
+	<Version>0.1.2.1</Version>
 	<Authors>MrGneissGuy</Authors>
     <Description>Inject .NET Core Dlls into x86/x64 native processes</Description>
     <ProjectUrl>https://github.com/Mbucari/InjectDotnet</ProjectUrl>
@@ -11,7 +11,6 @@
 	<PackageProjectUrl>https://github.com/Mbucari/InjectDotnet</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/Mbucari/InjectDotnet</RepositoryUrl>
     <TargetFramework>net6.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <Platforms>x64;x86</Platforms>

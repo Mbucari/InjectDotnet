@@ -1,4 +1,6 @@
-﻿namespace InjectDotnet;
+﻿using System;
+
+namespace InjectDotnet;
 
 [Flags]
 public enum AllocationType

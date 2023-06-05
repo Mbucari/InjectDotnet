@@ -1,5 +1,6 @@
 ﻿using InjectDotnet.NativeHelper.Native;
 using System.Diagnostics;
+using System.Linq;
 
 namespace InjectDotnet.NativeHelper;
 

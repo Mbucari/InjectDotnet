@@ -1,4 +1,6 @@
 ﻿using InjectDotnet.NativeHelper.Native;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace InjectDotnet.NativeHelper
 {
