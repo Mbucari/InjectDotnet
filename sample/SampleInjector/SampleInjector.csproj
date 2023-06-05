@@ -9,10 +9,14 @@
 	<Platforms>x64;x86</Platforms>
 	<BaseOutputPath>..\bin\</BaseOutputPath>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>	
-	
-  <ItemGroup>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
     <ProjectReference Include="..\..\src\InjectDotnet\InjectDotnet.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+    <PackageReference Include="InjectDotnet" Version="0.1.2" />
   </ItemGroup>	
 	
   <ItemGroup>

@@ -9,19 +9,16 @@
     <Platforms>x64;x86</Platforms>
     <BaseOutputPath>..\bin\</BaseOutputPath>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	<DebugType>embedded</DebugType>
+	<EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
-	<PropertyGroup>
-		<EnableDynamicLoading>true</EnableDynamicLoading>
-	</PropertyGroup>
-
-	
-	<PropertyGroup>
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
-  <ItemGroup>
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
     <ProjectReference Include="..\..\src\InjectDotnet.NativeHelper\InjectDotnet.NativeHelper.csproj" />
   </ItemGroup>
-	
+
+  <ItemGroup Condition="'$(Configuration)'=='Release'">
+	<PackageReference Include="InjectDotnet.NativeHelper" Version="0.1.2" />
+  </ItemGroup>
+
 </Project>
