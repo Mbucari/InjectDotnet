@@ -22,7 +22,11 @@ public static class ProcessExtensions
 	{
 		try
 		{
-			return NativeMethods.IsWow64Process(proc.SafeHandle, out var is32) && !is32;
+			return
+				Environment.Is64BitOperatingSystem
+				&& NativeMethods.IsWow64Process(proc.SafeHandle, out var is32)
+				&& !is32;
+
 		}
 		catch
 		{
