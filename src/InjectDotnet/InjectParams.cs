@@ -13,8 +13,6 @@ internal struct InjectParams
 	public nint fnClose;
 	[FieldOffset(0x18)]
 	public nint fnVirtualFree;
-	[FieldOffset(0x20)]
-	public nint fnExitThread;
 	[FieldOffset(0x28)]
 	nint _context;
 	[FieldOffset(0x30)]

@@ -34,7 +34,7 @@ internal unsafe class Program
 			pic_sz = picBytes.Length
 		};
 
-		Injector.Inject(
+		var fff = Injector.Inject(
 			target,
 			Path.GetFullPath("SampleInjected.runtimeconfig.json"),
 			Path.GetFullPath("SampleInjected.dll"),

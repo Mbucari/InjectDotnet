@@ -95,7 +95,8 @@ internal unsafe static class Program
 
 		Application.Run(form);
 
-		return 0;
+		//Integer returned by InjectDotnet.Inject is called with waitForReturn: true
+		return 0x12345678;
 	}
 
 	static ImportHook? WriteFileHook;
