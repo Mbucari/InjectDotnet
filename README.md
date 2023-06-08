@@ -17,7 +17,7 @@ Hooking imports is accomplished by replacing the target function's address in a 
 In the sample, all of notepad.exe's calls to `WriteFile` will call `WriteFile_hook`, and `WriteFile_hook` modifies the parameters before calling `Kernel32.WriteFile`.
 
 ```C#
-static ImportHook? WriteFileHook;
+static INativeHook? WriteFileHook;
 static WriteFileDelegate? WriteFile_original;
 
 delegate bool WriteFileDelegate(
