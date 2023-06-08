@@ -1,0 +1,8 @@
+dotnet build ./InjectDotnet/InjectDotnet.csproj /p:Platform=x86 -c Release
+dotnet build ./InjectDotnet/InjectDotnet.csproj /p:Platform=x64 -c Release
+dotnet pack .\InjectDotnet\InjectDotnet.csproj --no-build -c Release -o . -p:NuspecFile=../InjectDotnet.nuspec
+
+
+dotnet build ./InjectDotnet.NativeHelper/InjectDotnet.NativeHelper.csproj /p:Platform=x86 -c Release
+dotnet build ./InjectDotnet.NativeHelper/InjectDotnet.NativeHelper.csproj /p:Platform=x64 -c Release
+dotnet pack ./InjectDotnet.NativeHelper/InjectDotnet.NativeHelper.csproj --no-build -c Release -o . -p:NuspecFile=../InjectDotnet.NativeHelper.nuspec

@@ -13,6 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{C42930
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleInjected", "sample\SampleInjected\SampleInjected.csproj", "{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}"
 	ProjectSection(ProjectDependencies) = postProject
+		{230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6} = {230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6}
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD} = {A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}
 	EndProjectSection
 EndProject

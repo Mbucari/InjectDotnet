@@ -1,0 +1,29 @@
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata minClientVersion="3.2">
+		<id>InjectDotnet.NativeHelper</id>
+		<version>0.1.2.2</version>
+		<description>Provides tools for hooking native functions and interacting with native memoy</description>
+		<authors>MBucari</authors>
+		<repository type="git" url="https://github.com/Mbucari/InjectDotnet.git" branch="master" />
+		<projectUrl>https://github.com/Mbucari/InjectDotnet</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<Tags>dll inject hook</Tags>
+        <language>en-US</language>
+		<dependencies>
+			<group targetFramework="net6.0-windows7.0" />
+		</dependencies>
+    </metadata>
+	<dependencies>
+		<group targetFramework="net6.0-windows7.0">
+			<dependency id="Microsoft.SourceLink.GitHub" version="1.1.1" />
+		</group>
+	</dependencies>
+    <files>
+        <!-- .NET 6 Windows -->
+        <file src="InjectDotnet.NativeHelper.props" target="build\net6.0-windows7.0" />
+        <file src="_._" target="lib\net6.0-windows7.0" />
+        
+        <file src="InjectDotnet.NativeHelper\bin\x86\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x86" />
+        <file src="InjectDotnet.NativeHelper\bin\x64\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x64" />    
+    </files>
+</package>

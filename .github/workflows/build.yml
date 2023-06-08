@@ -1,0 +1,45 @@
+# build-windows.yml
+# Reusable workflow that builds the Windows versions of Libation.
+---
+name: build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  DOTNET_CONFIGURATION: 'Release'
+  DOTNET_VERSION: '6.0.x'
+
+jobs:
+  build:
+    name: '${{ matrix.project }}'
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        project: [InjectDotnet,InjectDotnet.NativeHelper]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+        env:
+          NUGET_AUTH_TOKEN: ${{secrets.NUGET_TOKEN}}
+
+      - name: Publish
+        working-directory: ./src
+        run: |
+          echo "" >> _._
+          dotnet build ./${{ matrix.project }}/${{ matrix.project }}.csproj /p:Platform=x86 -c Release
+          dotnet build ./${{ matrix.project }}/${{ matrix.project }}.csproj /p:Platform=x64 -c Release
+          dotnet pack ./${{ matrix.project }}/${{ matrix.project }}.csproj --no-build -c Release -o . -p:NuspecFile=../${{ matrix.project }}.nuspec
+
+      - name: Push
+        working-directory: ./src
+        continue-on-error : true
+        run: |
+          dotnet nuget push *.nupkg -s https://api.nuget.org/v3/index.json -k ${{secrets.NUGET_TOKEN}} --skip-duplicate
+              

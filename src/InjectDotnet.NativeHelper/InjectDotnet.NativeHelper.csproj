@@ -10,7 +10,7 @@
 	<RepositoryUrl>https://github.com/Mbucari/InjectDotnet</RepositoryUrl>
 	<PackageProjectUrl>https://github.com/Mbucari/InjectDotnet</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/Mbucari/InjectDotnet</RepositoryUrl>
-	<TargetFramework>net6.0-windows</TargetFramework>
+	<TargetFramework>net6.0-windows7.0</TargetFramework>
 	<Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	<Platforms>x64;x86</Platforms>
