@@ -41,6 +41,33 @@ unsafe public static class NativeExtensions
 		return ImportHook.Create(import, hookPointer, installAfterCreate);
 	}
 
+
+
+	/// <summary>
+	/// Hook a native dll export function on a single thread with a
+	/// <see cref="Delegate"/> using hardware breakpoints.
+	/// </summary>
+	/// <param name="export">The export to hook</param>
+	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
+	/// <param name="thread">The process thread on which the hook is activated. Usually themain thread,
+	/// which can be guessed at by choosing the oldest <see cref="ProcessThread.StartTime"/></param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
+	/// <remarks>
+	/// NOTE: <see cref="BreakpointHook"/> cannot be debugged. The debugger will hang on the breakpoint and deadlock.
+	/// </remarks>
+	/// <returns>A valid <see cref="BreakpointHook"/> if successful</returns>
+	public static BreakpointHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook, ProcessThread? thread, bool installAfterCreate = true)
+		where TDelegate : Delegate
+	{
+		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
+		if (export is null ||
+			hookPointer == 0 ||
+			thread is null ||
+			export.FunctionRVA is not uint rva) return null;
+
+		return BreakpointHook.Create((nint)rva + export.Module.BaseAddress, hookPointer, thread.Id, installAfterCreate);
+	}
+
 	/// <summary>
 	/// Hook a native dll export with an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// </summary>
@@ -48,12 +75,37 @@ unsafe public static class NativeExtensions
 	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
 	/// with the same parameter signature as the native export</param>
 	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
-	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
-	public static ExportHook? Hook(this NativeExport? export, void* hook, bool installAfterCreate = true)
+	/// <returns>A valid <see cref="JumpHook"/> if successful</returns>
+	public static JumpHook? Hook(this NativeExport? export, void* hook, bool installAfterCreate = true)
 	{
 		var hookPointer = (nint)hook;
 		if (export is null || hookPointer == 0) return null;
-		return ExportHook.Create(export, hookPointer, installAfterCreate);
+		return JumpHook.Create(export, hookPointer, installAfterCreate);
+	}
+
+	/// <summary>
+	/// Hook a native dll export function on a single thread with an
+	/// <see cref="UnmanagedCallersOnlyAttribute"/> delegate using
+	/// hardware breakpoints.
+	/// </summary>
+	/// <param name="export">The export to hook</param>
+	/// <param name="hook">A pointer to an <see cref="UnmanagedCallersOnlyAttribute"/> delegate
+	/// with the same parameter signature as the native export</param>
+	/// <param name="thread">The process thread on which the hook is activated. Usually themain thread,
+	/// which can be guessed at by choosing the oldest <see cref="ProcessThread.StartTime"/></param>
+	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
+	/// <remarks>
+	/// NOTE: <see cref="BreakpointHook"/> cannot be debugged. The debugger will hang on the breakpoint and deadlock.
+	/// </remarks>
+	/// <returns>A valid <see cref="BreakpointHook"/> if successful</returns>
+	public static BreakpointHook? Hook(this NativeExport? export, void* hook, ProcessThread? thread, bool installAfterCreate = true)
+	{
+		var hookPointer = (nint)hook;
+		if (export is null ||
+			hookPointer == 0 ||
+			thread is null ||
+			export.FunctionRVA is not uint rva) return null;
+		return BreakpointHook.Create((nint)rva + export.Module.BaseAddress, hookPointer, thread.Id, installAfterCreate);
 	}
 
 	/// <summary>
@@ -62,13 +114,13 @@ unsafe public static class NativeExtensions
 	/// <param name="export">The export to hook</param>
 	/// <param name="hook">A managed delegate with the same parameter signature as the native export</param>
 	/// <param name="installAfterCreate">If true hook creation only succeeds if <see cref="INativeHook.InstallHook"/> returns true</param>
-	/// <returns>A valid <see cref="ExportHook"/> if successful</returns>
-	public static ExportHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook, bool installAfterCreate = true)
+	/// <returns>A valid <see cref="JumpHook"/> if successful</returns>
+	public static JumpHook? Hook<TDelegate>(this NativeExport? export, TDelegate hook, bool installAfterCreate = true)
 		where TDelegate : Delegate
 	{
 		nint hookPointer = Marshal.GetFunctionPointerForDelegate(hook);
 		if (export is null || hookPointer == 0) return null;
-		return ExportHook.Create(export, hookPointer, installAfterCreate);
+		return JumpHook.Create(export, hookPointer, installAfterCreate);
 	}
 
 	/// <summary>
@@ -178,8 +230,11 @@ unsafe public static class NativeExtensions
 				//Read the IAT entry from the PE file
 				peFile.BaseStream.Position =
 					iatEntryRVA - importSection.VirtualAddress + importSection.PointerToRawData;
-
-				long entry = Environment.Is64BitProcess ? peFile.ReadInt64() : peFile.ReadInt32();
+#if X64
+				long entry = peFile.ReadInt64();
+#else
+				long entry = peFile.ReadInt32();
+#endif
 
 				NativeImport import;
 				if (entry < 0)
@@ -306,7 +361,13 @@ unsafe public static class NativeExtensions
 		var NumberOfSections = *(ushort*)(hModule + lfanew + 6);
 
 		//Last field in IMAGE_OPTIONAL_HEADER
-		var pStructs = hModule + lfanew + (Environment.Is64BitProcess ? 0x84 : 0x74);
+		var pStructs = hModule + lfanew +
+
+#if X64
+		0x84;
+#else
+		0x74;
+#endif
 		var numRvaAndSizes = *(int*)pStructs;
 
 		pStructs += sizeof(int);

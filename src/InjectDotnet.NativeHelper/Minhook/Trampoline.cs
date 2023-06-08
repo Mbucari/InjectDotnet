@@ -31,10 +31,13 @@ using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper.Minhook;
 
-internal unsafe class Trampoline
+public unsafe class Trampoline
 {
-	private static readonly int TRAMPOLINE_MAX_SIZE
-		= IntPtr.Size == 8 ? IntPtr.Size * 8 - sizeof(JMP_ABS) : IntPtr.Size * 8;
+#if X64
+	private static readonly int TRAMPOLINE_MAX_SIZE = IntPtr.Size * 8 - sizeof(JMP_ABS);
+#else
+	private static readonly int TRAMPOLINE_MAX_SIZE = IntPtr.Size * 8;
+#endif
 
 	/// <summary>
 	/// [In] Address of the target function.
@@ -91,19 +94,15 @@ internal unsafe class Trampoline
 			void* pCopySrc;
 			nint pOldInst = ct.TargetAddress + oldPos;
 			nint pNewInst = ct.TrampolineAddress + newPos;
-
-			if (Environment.Is64BitProcess)
-			{
-				hde64s hs64;
-				copySize = hde64s.hde64_disasm((byte*)pOldInst, &hs64);
-				hs = hs64;
-			}
-			else
-			{
-				hde32s hs32;
-				copySize = hde32s.hde32_disasm((byte*)pOldInst, &hs32);
-				hs = hs32;
-			}
+#if X64
+			hde64s hs64;
+			copySize = hde64s.hde64_disasm((byte*)pOldInst, &hs64);
+			hs = hs64;
+#else
+			hde32s hs32;
+			copySize = hde32s.hde32_disasm((byte*)pOldInst, &hs32);
+			hs = hs32;
+#endif
 
 			if (hs.IsError)
 				return false;
@@ -113,21 +112,20 @@ internal unsafe class Trampoline
 			{
 				// The trampoline function is long enough.
 				// Complete the function with the jump to the target function.
-				if (Environment.Is64BitProcess)
-				{
-					var jmp = new JMP_ABS(pOldInst);
-					pCopySrc = &jmp;
-					copySize = (uint)sizeof(JMP_ABS);
-				}
-				else
-				{
-					var jmp = new JMP_REL(pOldInst, pNewInst);
-					pCopySrc = &jmp;
-					copySize = (uint)sizeof(JMP_REL);
-				}
+#if X64
+				var jmp = new JMP_ABS(pOldInst);
+				pCopySrc = &jmp;
+				copySize = (uint)sizeof(JMP_ABS);
+#else
+
+				var jmp = new JMP_REL(pOldInst, pNewInst);
+				pCopySrc = &jmp;
+				copySize = (uint)sizeof(JMP_REL);
+#endif
 				finished = true;
 			}
-			else if (Environment.Is64BitProcess && (hs.ModRm & 0xC7) == 0x05)
+#if X64
+			else if ((hs.ModRm & 0xC7) == 0x05)
 			{
 				// Instructions using RIP relative addressing. (ModR/M = 00???101B)
 
@@ -149,34 +147,34 @@ internal unsafe class Trampoline
 				if (hs.Opcode == 0xFF && hs.ModRm_Reg == 4)
 					finished = true;
 			}
+#endif
 			else if (hs.Opcode == 0xE8)
 			{
 				// Direct relative CALL
 				nint dest = pOldInst + hs.Length + (int)hs.Imm.imm32;
-				if (Environment.Is64BitProcess)
+#if X64
+				var call = new CALL_ABS
 				{
-					var call = new CALL_ABS
-					{
-						opcode0 = 0xFF,
-						opcode1 = 0x15,
-						dummy0 = 0x00000002,
-						dummy1 = 0xEB,
-						dummy2 = 0x08,
-						address = (ulong)dest
-					};
-					pCopySrc = &call;
-					copySize = (uint)sizeof(CALL_ABS);
-				}
-				else
-				{
-					var call = new JMP_REL(dest, pNewInst)
-					{
-						opcode = 0xE8 //Call
-					};
+					opcode0 = 0xFF,
+					opcode1 = 0x15,
+					dummy0 = 0x00000002,
+					dummy1 = 0xEB,
+					dummy2 = 0x08,
+					address = (ulong)dest
+				};
+				pCopySrc = &call;
+				copySize = (uint)sizeof(CALL_ABS);
 
-					pCopySrc = &call;
-					copySize = (uint)sizeof(JMP_REL);
-				}
+#else
+				var call = new JMP_REL(dest, pNewInst)
+				{
+					opcode = 0xE8 //Call
+				};
+
+				pCopySrc = &call;
+				copySize = (uint)sizeof(JMP_REL);
+
+#endif
 			}
 			else if ((hs.Opcode & 0xFD) == 0xE9)
 			{
@@ -197,19 +195,16 @@ internal unsafe class Trampoline
 				}
 				else
 				{
-					if (Environment.Is64BitProcess)
-					{
-						var jmp = new JMP_ABS(dest);
-						pCopySrc = &jmp;
-						copySize = (uint)sizeof(JMP_ABS);
-					}
-					else
-					{
-						var jmp = new JMP_REL(dest, pNewInst);
-						pCopySrc = &jmp;
-						copySize = (uint)sizeof(JMP_REL);
-					}
+#if X64
+					var jmp = new JMP_ABS(dest);
+					pCopySrc = &jmp;
+					copySize = (uint)sizeof(JMP_ABS);
+#else
 
+					var jmp = new JMP_REL(dest, pNewInst);
+					pCopySrc = &jmp;
+					copySize = (uint)sizeof(JMP_REL);
+#endif
 					// Exit the function if it is not in the branch.
 					finished = pOldInst >= jmpDest;
 				}
@@ -244,30 +239,27 @@ internal unsafe class Trampoline
 				{
 					byte cond = (byte)((hs.Opcode != 0x0F ? hs.Opcode : hs.Opcode2) & 0x0F);
 
-					if (Environment.Is64BitProcess)
+#if X64
+					var jcc = new JCC_ABS
 					{
-						var jcc = new JCC_ABS
-						{
-							opcode = (byte)(0x71 ^ cond),
-							dummy0 = 0xE,
-							dummy1 = 0xFF,
-							dummy2 = 0x25,
-							address = (ulong)dest
-						};
-						pCopySrc = &jcc;
-						copySize = (uint)sizeof(JCC_ABS);
-					}
-					else
+						opcode = (byte)(0x71 ^ cond),
+						dummy0 = 0xE,
+						dummy1 = 0xFF,
+						dummy2 = 0x25,
+						address = (ulong)dest
+					};
+					pCopySrc = &jcc;
+					copySize = (uint)sizeof(JCC_ABS);
+#else
+					var jcc = new JCC_REL
 					{
-						var jcc = new JCC_REL
-						{
-							opcode0 = 0xF,
-							opcode1 = (byte)(0x80 | cond),
-							operand = (uint)(dest - (pNewInst + sizeof(JCC_REL)))
-						};
-						pCopySrc = &jcc;
-						copySize = (uint)sizeof(JCC_REL);
-					}
+						opcode0 = 0xF,
+						opcode1 = (byte)(0x80 | cond),
+						operand = (uint)(dest - (pNewInst + sizeof(JCC_REL)))
+					};
+					pCopySrc = &jcc;
+					copySize = (uint)sizeof(JCC_REL);
+#endif
 				}
 			}
 			else if ((hs.Opcode & 0xFE) == 0xC2)

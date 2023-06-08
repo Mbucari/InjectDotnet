@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 //Must use blitable types in UnmanagedCallersOnly delegates
+using BOOL = System.Int32;
 
 namespace SampleInjected;
 
@@ -30,6 +31,7 @@ internal unsafe static class Program
 	[STAThread]
 	public static int Bootstrap(IntPtr argument, int size)
 	{
+		#region Load Argument and Create Display Form
 		//load the struct from unmanaged memory
 		var arg = Marshal.PtrToStructure<Argument>(argument);
 
@@ -53,13 +55,18 @@ internal unsafe static class Program
 		};
 		form.label1.Text = text;
 		form.pictureBox1.Image = img;
+		#endregion
+
+		#region Register Hooks
 
 		var currentProc = Process.GetCurrentProcess();
 
+		#region Module Import Table Hook
+
 		//Hook kernel32.WriteFile in the main module's import table
+
 		WriteFileHook
-			= Process
-			.GetCurrentProcess()
+			= currentProc
 			.MainModule
 			?.GetImportByName("kernel32", "WriteFile")
 			?.Hook(WriteFile_hook);
@@ -69,16 +76,39 @@ internal unsafe static class Program
 			WriteFile_original = Marshal
 			.GetDelegateForFunctionPointer<WriteFileDelegate>(WriteFileHook.OriginalFunction);
 
+		#endregion
+		#region Trampoline Detour Hook
+
+		//Hook kernel32.ReadFile
+
+		delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook2 = &ReadFile_hook;
+		ReadFileHook
+			= currentProc
+			.GetModulesByName("kernel32")
+			.FirstOrDefault()
+			?.GetExportByName("ReadFile")
+			?.Hook(hook2);
+
+		if (ReadFileHook is not null)
+			ReadFile_original =
+				(delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)
+				ReadFileHook.OriginalFunction;
+
+		#endregion
+		#region Hardware Breakpoint Hook
 
 		//Hook kernel32.CreateFileW
-		delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook2 = &CreateFileW_hook;
+		//NOTE: In all likelihood, you will not be able to debug a breakpoint hook.
+		//The attached debugger will see the hardware breakpoint and will stop.
+		var firstThread = currentProc.Threads.Cast<ProcessThread>().MinBy(t => t.StartTime);
+
+		delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook3 = &CreateFileW_hook;
 		CreateFileWHook
-			= Process
-			.GetCurrentProcess()
+			= currentProc
 			.GetModulesByName("kernel32")
 			.FirstOrDefault()
 			?.GetExportByName("CreateFileW")
-			?.Hook(hook2, installAfterCreate: false);
+			?.Hook(hook3, firstThread, installAfterCreate: false);
 		//Some highly-trafficed functions may be called after the hook is installed but
 		//before the delegate to the original funciton is created. You can iliminate that
 		//race condition by using the installAfterCreate = false option, then installing
@@ -93,16 +123,21 @@ internal unsafe static class Program
 			CreateFileWHook.InstallHook();
 		}
 
+		#endregion
+		#endregion
+
 		Application.Run(form);
 
 		//Integer returned by InjectDotnet.Inject is called with waitForReturn: true
 		return 0x12345678;
 	}
 
-	static ImportHook? WriteFileHook;
-	static ExportHook? CreateFileWHook;
+	static INativeHook? WriteFileHook;
+	static INativeHook? ReadFileHook;
+	static INativeHook? CreateFileWHook;
 	static WriteFileDelegate? WriteFile_original;
 	static delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> CreateFileW_original;
+	static delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> ReadFile_original;
 
 	delegate bool WriteFileDelegate(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, ref int lpNumberOfBytesWritten, IntPtr lpOverlapped);
 
@@ -113,11 +148,7 @@ internal unsafe static class Program
 	{
 		var fileName = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)lpFileName));
 
-		if (!CreateFileWHook!.HasTrampoline)
-		{
-			//Trampoline was not created, so remove hook before calling original
-			CreateFileWHook!.RemoveHook();
-		}
+		MessageBox.Show($"IsHooked = {CreateFileWHook!.IsHooked}");
 
 		var result
 			= CreateFileW_original(
@@ -129,12 +160,21 @@ internal unsafe static class Program
 				dwFlagsAndAttributes,
 				hTemplateFile);
 
-		if (!CreateFileWHook.HasTrampoline)
-		{
-			//Trampoline was not created, so reinstall hook after calling original
-			CreateFileWHook.InstallHook();
-		}
+		return result;
+	}
 
+	[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+	static BOOL ReadFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, int* lpNumberOfBytesWritten, IntPtr lpOverlapped)
+	{
+		//Get the filename being written to
+		var sz = GetFinalPathNameByHandleW(hFile, null, 0, 0);
+		Span<char> buff = new char[sz];
+		fixed (char* c = buff)
+			sz = GetFinalPathNameByHandleW(hFile, c, buff.Length, 0);
+
+		var fileName = new string(buff.Slice(0, sz));
+
+		var result = ReadFile_original(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
 		return result;
 	}
 

@@ -49,5 +49,25 @@ namespace InjectDotnet.NativeHelper
 			minFreeSize = 0;
 			return 0;
 		}
+
+		/// <summary>
+		/// Allocate some memory to store a pointer to the hook function. The pointer must be in
+		/// range of the exported function so that it can be reached with a long jmp. The Maximum
+		/// distance of a long jump offset size is 32 bits in both x86 and x64. 
+		/// </summary>
+		/// <param name="baseAddress">Address in virtual to begin searching for a free memory block</param>
+		/// <returns>A pointer to the beginning of the free memory block</returns>
+		unsafe public static nint AllocateMemoryNearBase(nint baseAddress)
+		{
+			nint minSize = sizeof(nint);
+			var pHookFn = FirstFreeAddress(baseAddress, ref minSize);
+			if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue) return 0;
+
+			return NativeMethods.VirtualAlloc(
+				pHookFn,
+				(nint)MemoryBasicInformation.SystemInfo.PageSize,
+				AllocationType.ReserveCommit,
+				MemoryProtection.ExecuteReadWrite);
+		}
 	}
 }

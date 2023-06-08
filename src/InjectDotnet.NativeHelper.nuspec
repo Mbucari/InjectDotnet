@@ -1,7 +1,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata minClientVersion="3.2">
 		<id>InjectDotnet.NativeHelper</id>
-		<version>0.1.2.2</version>
+		<version>0.2.0</version>
 		<description>Provides tools for hooking native functions and interacting with native memoy</description>
 		<authors>MBucari</authors>
 		<repository type="git" url="https://github.com/Mbucari/InjectDotnet.git" branch="master" />

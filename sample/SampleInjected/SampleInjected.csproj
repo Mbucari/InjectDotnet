@@ -13,12 +13,8 @@
 	<EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+  <ItemGroup>
     <ProjectReference Include="..\..\src\InjectDotnet.NativeHelper\InjectDotnet.NativeHelper.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)'=='Release'">
-	<PackageReference Include="InjectDotnet.NativeHelper" Version="0.1.2.1" />
   </ItemGroup>
 
 </Project>

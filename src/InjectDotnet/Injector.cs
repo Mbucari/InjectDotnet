@@ -10,22 +10,18 @@ namespace InjectDotnet;
 
 public static class Injector
 {
+	private const int MAX_PATH = 260;
+
+	#region Loader
+
+#if X64
+	private static readonly string PLATFORM = "x64";
 	//Loads dotnet runtime, calls the injected dll, and then frees InjectParams and all its fields
 	//Sets thread exit code to method's return value
-	private static readonly byte[] DOTNET_LOADER_ASM;
-	private const int MAX_PATH = 260;
-	private static readonly string PLATFORM;
-
-	static Injector()
-	{
-		#region Loader
-		if (Environment.Is64BitProcess)
-		{
-			PLATFORM = "x64";
-			DOTNET_LOADER_ASM = new byte[]
+	private static readonly byte[] DOTNET_LOADER_ASM = new byte[]
 {
  0x48, 0x83, 0xEC, 0x38,				//sub rsp, 0x38
- 0x48, 0x89, 0xCD,						//mov rbp, rcx Store Argument 1 in rbp
+ 0x48, 0x89, 0xCD,						//mov rbp, rcx | Store InjectParams 1 in rbp
  0x4C, 0x8D, 0x45, 0x28,				//mov r8, [Arg._context] 
  0x48, 0x31, 0xD2,						//xor rdx, rdx
  0x48, 0x8B, 0x4D, 0x40,				//mov rcx, [Arg.str_runtimeconfig]
@@ -66,13 +62,14 @@ public static class Injector
  0x48, 0x83, 0xC4, 0x38,				//add rsp, 0x38
  0xC3									//ret
 };
-		}
-		else
-		{
-			PLATFORM = "x86";
-			DOTNET_LOADER_ASM = new byte[]
+
+#else
+	private static readonly string PLATFORM = "x86";
+	//Loads dotnet runtime, calls the injected dll, and then frees InjectParams and all its fields
+	//Sets thread exit code to method's return value
+	private static readonly byte[] DOTNET_LOADER_ASM = new byte[]
 {
- 0x8B, 0x6C, 0x24, 0x04,		// mov ebp, dword ptr ss:[esp+0x4] Store Argument 1 in ebp
+ 0x8B, 0x6C, 0x24, 0x04,		// mov ebp, [esp+0x4] | Store InjectParams 1 in ebp
  0x8D, 0x45, 0x28,				//lea eax, [Arg._context] 
  0x50,							//push eax
  0x6A, 0x00,					//push 0
@@ -114,9 +111,9 @@ public static class Injector
  0x83, 0xC4, 0x1C,				//add esp, 0x1c
  0xC3							//ret
 };
-		}
-		#endregion
-	}
+#endif
+
+#endregion
 
 
 	/// <summary>

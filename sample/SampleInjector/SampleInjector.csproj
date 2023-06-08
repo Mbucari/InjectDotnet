@@ -11,12 +11,8 @@
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+  <ItemGroup>
     <ProjectReference Include="..\..\src\InjectDotnet\InjectDotnet.csproj" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(Configuration)'=='Release'">
-    <PackageReference Include="InjectDotnet" Version="0.1.2.1" />
   </ItemGroup>	
 	
   <ItemGroup>

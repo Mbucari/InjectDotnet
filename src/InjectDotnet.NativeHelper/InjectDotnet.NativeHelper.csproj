@@ -2,7 +2,7 @@
 
   <PropertyGroup>
 	<Title>InjectDotnet.NativeHelper</Title>
-	<Version>0.1.2.1</Version>
+	<Version>0.2.0</Version>
 	<Authors>MrGneissGuy</Authors>
 	<Description>Hook native x86 and x64 processes with managed code</Description>
 	<ProjectUrl>https://github.com/Mbucari/InjectDotnet</ProjectUrl>
@@ -19,6 +19,10 @@
 	<DebugType>embedded</DebugType>
 	<RepositoryType>Git</RepositoryType>
 	<NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
 	
   <ItemGroup>
