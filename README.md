@@ -56,57 +56,89 @@ static bool WriteFile_hook(
 
 Hooking exports is accomplished by overwriting the original function's entry point instructions with a jump to a block of memory allocated nearby. NativeHelper will attempt to create a trampoline (using a C# port of [minhook](https://github.com/TsudaKageyu/minhook)). If successdul, the original function may be called without removing the hook. If trampoline creation failed, the hook must be removed via `RemoveHook()` before calling the original function. See the `HasTrampoline` property. In both cases, calls to the original function will jump to the hook delegate when the hook is installed. The delegate can be either an `[UnmanagedCallersOnly]` method or a managed delegate with the same signature as the exported function.
 
-In the sample, all calls to `CreateFileW` within notepad.exe's process will call `CreateFileW_hook`. `CreateFileW_hook` peeks at the parameters, calls `Kernelbase.CreateFileW`,  and then returns the file handle.
+In the sample, all calls to `ReadFile` within notepad.exe's process will call `ReadFile_hook`. `ReadFile_hook` peeks at the parameters, calls `Kernelbase.ReadFile`,  and then returns the file handle.
 
 ```C#
-static ExportHook? CreateFileWHook;
-static delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> CreateFileW_original;
+using BOOL = System.Int32;
+
+static INativeHook? ReadFileHook;
+static delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> ReadFile_original;
 
 public static int Bootstrap(IntPtr argument, int size)
 {
-    //Hook kernel32.CreateFileW
-    delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook2 = &CreateFileW_hook;
-    CreateFileWHook
-        = Process
-        .GetCurrentProcess()
+    delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL> hook2 = &ReadFile_hook;
+    ReadFileHook
+        = currentProc
         .GetModulesByName("kernel32")
         .FirstOrDefault()
-        ?.GetExportByName("CreateFileW")
+        ?.GetExportByName("ReadFile")
         ?.Hook(hook2);
 
-    //kernel32.CreateFileW forwards to kernelbase.CreateFileW;
-    CreateFileW_original =
-        (delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)
-        NativeLibrary.GetExport(NativeLibrary.Load("kernelbase"), "CreateFileW");
+    if (ReadFileHook is not null)
+        ReadFile_original =
+            (delegate* unmanaged[Stdcall]<IntPtr, byte*, int, int*, IntPtr, BOOL>)
+            ReadFileHook.OriginalFunction;
 }
-
 [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
-static IntPtr CreateFileW_hook(
-    IntPtr lpFileName,
-    uint dwDesiredAccess,
-    uint dwShareMode,
-    IntPtr lpSecurityAttributes,
-    uint dwCreationDisposition,
-    uint dwFlagsAndAttributes,
-    IntPtr hTemplateFile)
+static BOOL ReadFile_hook(IntPtr hFile, byte* lpBuffer, int nNumberOfBytesToWrite, int* lpNumberOfBytesWritten, IntPtr lpOverlapped)
 {
-    var result
-        = CreateFileW_original is null ? IntPtr.Zero
-        : CreateFileW_original(
-            lpFileName,
-            dwDesiredAccess,
-            dwShareMode,
-            lpSecurityAttributes,
-            dwCreationDisposition,
-            dwFlagsAndAttributes,
-            hTemplateFile);
-                
-    return result;
+	var result = ReadFile_original(hFile, lpBuffer, nNumberOfBytesToWrite, lpNumberOfBytesWritten, lpOverlapped);
+	return result;
 }
 ```
 ## Hooking Arbitrary Addresses
 
-You may install a hook at any address using `NativeHook.Create()`. `NativeHook` is the base class of `ExportHook`, and they behave identically.
+You may install a hook at any address using `JumpHook.Create()`.
+
+## Breakpoint Hooks
+
+You may perform hooking using i386 hardware breakpoints. `BreakpointHook` is thread-specific because it relies on the CPU's debug registers being set in the thread's context. You're also limited to four breakpoints per thread. Additionally, you will almost certainly not be able to debug the hook function because the hardware breakpoint will notify the debugger of a stop and it will deadlock.
+
+```C#
+static INativeHook? CreateFileWHook;
+static delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> CreateFileW_original;
+
+public static int Bootstrap(IntPtr argument, int size)
+{
+    var firstThread = currentProc.Threads.Cast<ProcessThread>().MinBy(t => t.StartTime);
+
+    delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr> hook3 = &CreateFileW_hook;
+    CreateFileWHook
+        = currentProc
+        .GetModulesByName("kernel32")
+        .FirstOrDefault()
+        ?.GetExportByName("CreateFileW")
+        ?.Hook(hook3, firstThread, installAfterCreate: false);
+
+    if (CreateFileWHook?.OriginalFunction is not null or 0)
+    {
+        CreateFileW_original =
+            (delegate* unmanaged[Stdcall]<IntPtr, uint, uint, IntPtr, uint, uint, IntPtr, IntPtr>)
+            CreateFileWHook.OriginalFunction;
+
+        CreateFileWHook.InstallHook();
+    }
+}
+
+[UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvStdcall) })]
+static IntPtr CreateFileW_hook(
+    IntPtr lpFileName, uint dwDesiredAccess, uint dwShareMode,
+    IntPtr lpSecurityAttributes, uint dwCreationDisposition,
+    uint dwFlagsAndAttributes, IntPtr hTemplateFile)
+{
+	var result
+	= CreateFileW_original(
+		lpFileName,
+		dwDesiredAccess,
+		dwShareMode,
+		lpSecurityAttributes,
+		dwCreationDisposition,
+		dwFlagsAndAttributes,
+		hTemplateFile);
+
+	return result;
+}
+```
 
 ## See the samples for useage.
 There are two sample projects:
