@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace InjectDotnet.NativeHelper;
 
@@ -170,6 +171,22 @@ unsafe public static class NativeExtensions
 			.Where(m =>
 				m.ModuleName?.RemoveDllExtension().EqualsIgnoreCase(libraryName) is true ||
 				m.FileName?.RemoveDllExtension().EqualsIgnoreCase(libraryName) is true);
+	}
+
+	/// <summary>
+	/// Get <see cref="ProcessModule"/>s by <see cref="ProcessModule.ModuleName"/> or <see cref="ProcessModule.FileName"/>
+	/// </summary>
+	/// <param name="proc">The process whose modules are searched for matches</param>
+	/// <param name="libraryName">The ModuleName or FileName of the module. Case insensitive and file extension is ignored.</param>
+	/// <returns>All modules with matching names</returns>
+	public static IEnumerable<ProcessModule> GetModulesByName(this Process proc, Regex pattern)
+	{
+		proc.Refresh();
+		return proc.Modules
+			.Cast<ProcessModule>()
+			.Where(m =>
+				m.ModuleName is not null && pattern.IsMatch(m.ModuleName) is true ||
+				m.FileName is not null && pattern.IsMatch(m.FileName) is true);
 	}
 
 	/// <summary>
