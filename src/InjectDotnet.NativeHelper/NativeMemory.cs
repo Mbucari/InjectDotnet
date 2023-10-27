@@ -60,14 +60,25 @@ namespace InjectDotnet.NativeHelper
 		unsafe public static nint AllocateMemoryNearBase(nint baseAddress)
 		{
 			nint minSize = sizeof(nint);
-			var pHookFn = FirstFreeAddress(baseAddress, ref minSize);
-			if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue) return 0;
 
-			return NativeMethods.VirtualAlloc(
-				pHookFn,
-				(nint)MemoryBasicInformation.SystemInfo.PageSize,
-				AllocationType.ReserveCommit,
-				MemoryProtection.ExecuteReadWrite);
+			nint allocation = 0;
+			do
+			{
+				var pHookFn = FirstFreeAddress(baseAddress, ref minSize);
+				if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue)
+					continue;
+
+				allocation = NativeMethods.VirtualAlloc(
+					pHookFn,
+					(nint)MemoryBasicInformation.SystemInfo.PageSize,
+					AllocationType.ReserveCommit,
+					MemoryProtection.ExecuteReadWrite);
+
+				baseAddress = pHookFn;
+
+			} while (allocation == 0);
+
+			return allocation;
 		}
 	}
 }
