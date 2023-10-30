@@ -1,6 +1,7 @@
 ﻿using InjectDotnet.NativeHelper.Native;
 using Microsoft.Win32.SafeHandles;
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper;
@@ -14,16 +15,22 @@ public static class Permission
 	public static bool GetDebugPrivileges()
 	{
 		SafeAccessTokenHandle currentToken;
-		if (NativeMethods.OpenProcessToken(NativeMethods.GetCurrentProcess(), TokenAccessRights.TOKEN_ADJUST_PRIVILEGES | TokenAccessRights.TOKEN_READ, out currentToken))
+		if (NativeMethods.OpenProcessToken(Process.GetCurrentProcess().SafeHandle, TokenAccessRights.TOKEN_ADJUST_PRIVILEGES | TokenAccessRights.TOKEN_READ | TokenAccessRights.TOKEN_QUERY | TokenAccessRights.TOKEN_QUERY_SOURCE, out currentToken))
 		{
-			TOKEN_PRIVILEGES newPrivs = new TOKEN_PRIVILEGES();
+			var newPrivs = new LUID_AND_ATTRIBUTES[3];
+			NativeMethods.LookupPrivilegeValue(null, PrivelageNames.SE_DEBUG_NAME, out newPrivs[2].Luid);
+			NativeMethods.LookupPrivilegeValue(null, PrivelageNames.SE_CREATE_PAGEFILE_NAME, out newPrivs[1].Luid);
 
-			if (NativeMethods.LookupPrivilegeValue(null, PrivelageNames.SE_AUDIT_NAME, out newPrivs.LuidAndAttribs[0].Luid))
+			if (NativeMethods.LookupPrivilegeValue(null, PrivelageNames.SE_AUDIT_NAME, out newPrivs[0].Luid))
 			{
-				newPrivs.LuidAndAttribs[0].Attributes = LUIDPrivileges.SE_PRIVILEGE_ENABLED;
+				newPrivs[0].Attributes = LUIDPrivileges.SE_PRIVILEGE_ENABLED;
+				newPrivs[1].Attributes = LUIDPrivileges.SE_PRIVILEGE_ENABLED;
+				newPrivs[2].Attributes = LUIDPrivileges.SE_PRIVILEGE_ENABLED;
 
-				if (AdjustTokenPrivileges(currentToken, false, newPrivs, out _))
+				if (NativeMethods.AdjustTokenPrivileges(currentToken, false, newPrivs, out var previous))
 				{
+					var sss = NativeMethods.PrivilegeCheck(currentToken, newPrivs);
+					NativeMethods.AdjustTokenPrivileges(currentToken, false, newPrivs, out previous);
 					currentToken.Close();
 					return true;
 				}
@@ -31,23 +38,6 @@ public static class Permission
 			return false;
 		}
 		return false;
-	}
-
-	private static bool AdjustTokenPrivileges(SafeAccessTokenHandle TokenHandle, bool DisableAllPrivileges, TOKEN_PRIVILEGES NewState, out TOKEN_PRIVILEGES PreviousState)
-	{
-		PreviousState = new TOKEN_PRIVILEGES();
-
-		if (!NativeMethods.AdjustTokenPrivileges(TokenHandle, DisableAllPrivileges, NewState, PreviousState.Size, PreviousState, out int ReturnLength))
-		{
-			if (ReturnLength > PreviousState.Size)
-			{
-				PreviousState = new TOKEN_PRIVILEGES(ReturnLength);
-
-				return NativeMethods.AdjustTokenPrivileges(TokenHandle, DisableAllPrivileges, NewState, PreviousState.Size, PreviousState, out ReturnLength);
-			}
-			return false;
-		}
-		return true;
 	}
 }
 class PrivelageNames
