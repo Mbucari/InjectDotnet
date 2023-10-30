@@ -96,37 +96,29 @@ public class ThreadBreakpoints
 		var handle = NativeMethods.OpenThread(ThreadRights.THREAD_ALL_ACCESS, false, threadId.ThreadId);
 		if (handle == 0) return Marshal.GetLastWin32Error();
 
-		nint hMem = 0;
 		NativeMethods.SuspendThread(handle);
 
 		try
 		{
 			//Context must be on a 16-byte boundary. The only way to
 			//guarantee that is to allocate a new unmanaged page
-			hMem = NativeMethods.VirtualAlloc(
-				0,
-				sizeof(Context),
-				AllocationType.ReserveCommit,
-				MemoryProtection.ReadWrite);
+			Span<byte> buff = new byte[sizeof(Context) + 0x10];
+			fixed (byte* b = buff)
+			{
+				var pCtx = (Context*)(b + 0x10 - ((int)b & 0xf));
+				pCtx->ContextFlags = ContextFlags.CONTEXT_ALL;
 
-			if (hMem == 0) return Marshal.GetLastWin32Error();
+				if (!NativeMethods.GetThreadContext(handle, pCtx)) return Marshal.GetLastWin32Error();
 
-			var pCtx = (Context*)hMem;
-			pCtx->ContextFlags = ContextFlags.CONTEXT_ALL;
+				threadId.SetDebugRegisters(ref pCtx->Dr);
 
-			if (!NativeMethods.GetThreadContext(handle, pCtx)) return Marshal.GetLastWin32Error();
-
-			threadId.SetDebugRegisters(ref pCtx->Dr);
-
-			if (!NativeMethods.SetThreadContext(handle, pCtx)) return Marshal.GetLastWin32Error();
-
+				if (!NativeMethods.SetThreadContext(handle, pCtx)) return Marshal.GetLastWin32Error();
+			}
 			threadId.BreakpointNeedsSetting = false;
 			return 0;
 		}
 		finally
 		{
-			if (hMem != 0)
-				NativeMethods.VirtualFree(hMem, 0, FreeType.Release);
 			NativeMethods.ResumeThread(handle);
 			NativeMethods.CloseHandle(handle);
 		}

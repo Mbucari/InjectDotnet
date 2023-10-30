@@ -13,6 +13,12 @@ public static class NativeMethods
 	public static extern nint GetProcAddress(nint hModule, ushort ordinal);
 
 	[DllImport(KERNEL32, SetLastError = true)]
+	public static extern bool CloseHandle(IntPtr handle);
+
+	[DllImport(KERNEL32, SetLastError = true)]
+	public static extern void GetSystemInfo(out SystemInfo lpSystemInfo);
+
+	[DllImport(KERNEL32, SetLastError = true)]
 	public static unsafe extern bool VirtualProtect(nint handle, nint size, MemoryProtection newProtect, MemoryProtection* oldProtect);
 
 	[DllImport(KERNEL32, SetLastError = true)]
@@ -64,25 +70,27 @@ public static class NativeMethods
 	public static extern int ResumeThread(IntPtr hThread);
 
 	[DllImport(KERNEL32, SetLastError = true)]
-	public static extern unsafe bool SetThreadContext(IntPtr hThread, Context* lpContext);
-	[DllImport(KERNEL32, SetLastError = true)]
-	public static extern unsafe bool GetThreadContext(IntPtr hThread, Context* lpContext);
-
-	[DllImport(KERNEL32, SetLastError = true)]
-	public unsafe static extern nint AddVectoredExceptionHandler(uint first, delegate* unmanaged[Stdcall]<ExceptionPointers*, int> Handler);
-	[DllImport(KERNEL32, SetLastError = true)]
-	public static extern bool RemoveVectoredExceptionHandler(IntPtr handle);
-
-
-	[DllImport(KERNEL32, SetLastError = true)]
-	public static extern SafeProcessHandle GetCurrentProcess();
-
+	public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
 
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern int GetCurrentThreadId();
 
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern int WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
+
+	[DllImport(KERNEL32, SetLastError = true)]
+	public static extern unsafe bool SetThreadContext(IntPtr hThread, Context* lpContext);
+
+
+	[DllImport(KERNEL32, SetLastError = true)]
+	public static extern unsafe bool GetThreadContext(IntPtr hThread, Context* lpContext);
+
+
+	[DllImport(KERNEL32, SetLastError = true)]
+	public unsafe static extern nint AddVectoredExceptionHandler(uint first, delegate* unmanaged[Stdcall]<ExceptionPointers*, int> Handler);
+
+	[DllImport(KERNEL32, SetLastError = true)]
+	public static extern bool RemoveVectoredExceptionHandler(IntPtr handle);
 
 
 	[DllImport(ADVAPI32, SetLastError = true)]
