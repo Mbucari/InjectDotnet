@@ -32,9 +32,9 @@ using System.Runtime.InteropServices;
 namespace InjectDotnet.NativeHelper.Minhook;
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-internal struct hde64s : IHde
+internal struct Hde64s : IHde
 {
-	public byte len;
+	private byte len;
 	public byte p_rep;
 	public byte p_lock;
 	public byte p_seg;
@@ -45,31 +45,31 @@ internal struct hde64s : IHde
 	public byte rex_r;
 	public byte rex_x;
 	public byte rex_b;
-	public byte opcode;
-	public byte opcode2;
-	public byte modrm;
+	private byte opcode;
+	private byte opcode2;
+	private byte modrm;
 	public byte modrm_mod;
-	public byte modrm_reg;
+	private byte modrm_reg;
 	public byte modrm_rm;
 	public byte sib;
 	public byte sib_scale;
 	public byte sib_index;
 	public byte sib_base;
-	public Imm imm;
-	public Disp disp;
-	public uint flags;
+	private Imm imm;
+	private Disp disp;
+	private uint flags;
 
-	public byte Opcode => opcode;
-	public byte Length => len;
-	public byte Opcode2 => opcode2;
-	public Imm Imm => imm;
-	public Disp Disp => disp;
-	public byte ModRm => modrm;
-	public byte ModRm_Reg => modrm_reg;
-	public uint Flags => flags;
-	public bool IsError => (flags & F_ERROR) != 0;
+	public readonly byte Opcode => opcode;
+	public readonly byte Length => len;
+	public readonly byte Opcode2 => opcode2;
+	public readonly Imm Imm => imm;
+	public readonly Disp Disp => disp;
+	public readonly byte ModRm => modrm;
+	public readonly byte ModRm_Reg => modrm_reg;
+	public readonly uint Flags => flags;
+	public readonly bool IsError => (flags & F_ERROR) != 0;
 
-	unsafe public static uint hde64_disasm(byte* code, hde64s* hs)
+	unsafe public static uint Hde64_disasm(byte* code, Hde64s* hs)
 	{
 		byte* hde64_table = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(hde64_table_array));
 		byte x, c = 0, cflags = 0, opcode, pref = 0;
@@ -77,7 +77,7 @@ internal struct hde64s : IHde
 		byte m_mod, m_reg, m_rm, disp_size = 0, op64 = 0;
 		bool error_opcode_bool = false, rel32_ok_bool = false, imm16_ok_bool = false;
 
-		*hs = new hde64s();
+		*hs = new Hde64s();
 
 		for (x = 16; x != 0; x--)
 			switch (c = *p++)

@@ -11,13 +11,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectDotnet.NativeHelper",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{C42930AA-918A-4A25-9091-29EF5A58FADE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleInjected", "sample\SampleInjected\SampleInjected.csproj", "{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectedDll", "sample\InjectedDll\InjectedDll.csproj", "{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}"
 	ProjectSection(ProjectDependencies) = postProject
 		{230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6} = {230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6}
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD} = {A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SampleInjector", "sample\SampleInjector\SampleInjector.csproj", "{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectIntoRunning", "sample\InjectIntoRunning\InjectIntoRunning.csproj", "{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectAtStartup", "sample\InjectAtStartup\InjectAtStartup.csproj", "{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,6 +61,14 @@ Global
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}.Release|x64.Build.0 = Release|x64
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}.Release|x86.ActiveCfg = Release|x86
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}.Release|x86.Build.0 = Release|x86
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Debug|x64.ActiveCfg = Debug|x64
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Debug|x64.Build.0 = Debug|x64
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Debug|x86.ActiveCfg = Debug|x86
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Debug|x86.Build.0 = Debug|x86
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x64.ActiveCfg = Release|x64
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x64.Build.0 = Release|x64
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x86.ActiveCfg = Release|x86
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -68,6 +78,7 @@ Global
 		{3DBA0EB3-7EB1-41A6-BD88-28CE34C85E52} = {57568B1B-9C84-4869-8591-8D035284D46D}
 		{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
+		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5B066C6C-9A90-43CE-B253-4A80FBEBE70E}

@@ -35,7 +35,7 @@ public unsafe class Trampoline
 {
 #if X64
 	private static readonly int TRAMPOLINE_MAX_SIZE = IntPtr.Size * 8 - sizeof(JMP_ABS);
-#else
+#elif X86
 	private static readonly int TRAMPOLINE_MAX_SIZE = IntPtr.Size * 8;
 #endif
 
@@ -95,12 +95,12 @@ public unsafe class Trampoline
 			nint pOldInst = ct.TargetAddress + oldPos;
 			nint pNewInst = ct.TrampolineAddress + newPos;
 #if X64
-			hde64s hs64;
-			copySize = hde64s.hde64_disasm((byte*)pOldInst, &hs64);
+			Hde64s hs64;
+			copySize = Hde64s.Hde64_disasm((byte*)pOldInst, &hs64);
 			hs = hs64;
-#else
-			hde32s hs32;
-			copySize = hde32s.hde32_disasm((byte*)pOldInst, &hs32);
+#elif X86
+			Hde32s hs32;
+			copySize = Hde32s.Hde32_disasm((byte*)pOldInst, &hs32);
 			hs = hs32;
 #endif
 
@@ -116,7 +116,7 @@ public unsafe class Trampoline
 				var jmp = new JMP_ABS(pOldInst);
 				pCopySrc = &jmp;
 				copySize = (uint)sizeof(JMP_ABS);
-#else
+#elif X86
 
 				var jmp = new JMP_REL(pOldInst, pNewInst);
 				pCopySrc = &jmp;
@@ -165,7 +165,7 @@ public unsafe class Trampoline
 				pCopySrc = &call;
 				copySize = (uint)sizeof(CALL_ABS);
 
-#else
+#elif X86
 				var call = new JMP_REL(dest, pNewInst)
 				{
 					opcode = 0xE8 //Call
@@ -199,7 +199,7 @@ public unsafe class Trampoline
 					var jmp = new JMP_ABS(dest);
 					pCopySrc = &jmp;
 					copySize = (uint)sizeof(JMP_ABS);
-#else
+#elif X86
 
 					var jmp = new JMP_REL(dest, pNewInst);
 					pCopySrc = &jmp;
@@ -250,7 +250,7 @@ public unsafe class Trampoline
 					};
 					pCopySrc = &jcc;
 					copySize = (uint)sizeof(JCC_ABS);
-#else
+#elif X86
 					var jcc = new JCC_REL
 					{
 						opcode0 = 0xF,

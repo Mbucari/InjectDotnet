@@ -9,6 +9,8 @@
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
 		<Tags>Audible AAC AAXC m4b audiobook</Tags>
         <language>en-US</language>
+		<readme>docs\README.md</readme>	
+		<license type="file">LICENSE.txt</license>
 		<dependencies>
 			<group targetFramework="net6.0-windows7.0" />
 		</dependencies>
@@ -24,6 +26,9 @@
         <file src="_._" target="lib\net6.0-windows7.0" />
         
         <file src="InjectDotnet\bin\x86\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x86" />
-        <file src="InjectDotnet\bin\x64\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x64" />    
+        <file src="InjectDotnet\bin\x64\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x64" />		
+		
+		<file src="README.md" target="docs\" />
+		<file src="LICENSE.txt" target="LICENSE.txt" />
     </files>
 </package>

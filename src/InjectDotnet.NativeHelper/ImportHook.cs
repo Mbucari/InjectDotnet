@@ -1,4 +1,5 @@
 ﻿using InjectDotnet.NativeHelper.Native;
+using System;
 using System.Diagnostics;
 using System.Linq;
 
@@ -17,7 +18,7 @@ public class ImportHook : INativeHook
 	/// <summary>Name of the imported function that's being hooked</summary>
 	public string ImportedFunctionName { get; }
 	/// <summary>Entry point of <see cref="ImportedFunctionName"/></summary>
-	public nint OriginalFunction { get; private set; }
+	public nint OriginalFunction { get; }
 	public bool IsHooked
 	{
 		get => isHooked;
@@ -27,6 +28,7 @@ public class ImportHook : INativeHook
 			else RemoveHook();
 		}
 	}
+	public bool IsDisposed { get; private set; }
 
 	/// <summary>Address of the delegate that is hooking <see cref="OriginalFunction"/></summary>
 	public nint HookFunction { get; }
@@ -35,7 +37,7 @@ public class ImportHook : INativeHook
 	/// </summary>
 	private nint[] IATEntries { get; }
 
-	private ImportHook(
+	private unsafe ImportHook(
 		ProcessModule hookedModule,
 		string importingModuleName,
 		string importedFunctionName,
@@ -47,10 +49,18 @@ public class ImportHook : INativeHook
 		ImportedFunctionName = importedFunctionName;
 		HookFunction = hookFunction;
 		IATEntries = iatEntries;
+
+		//Store the location of the original function. It will be
+		//the same regardless of how many times it's imported.
+		var pImportTableEntry = (nint*)IATEntries[0];
+		OriginalFunction = *pImportTableEntry;
 	}
 
 	unsafe public bool InstallHook()
 	{
+		if (IsDisposed)
+			throw new ObjectDisposedException(nameof(JumpHook));
+
 		lock (this)
 		{
 			if (IsHooked) return false;
@@ -58,10 +68,6 @@ public class ImportHook : INativeHook
 			var didReplace = false;
 			foreach (nint* pImportTableEntry in IATEntries)
 			{
-				//Store the location of the original function. It will be
-				//the same regardless of how many times it's imported.
-				OriginalFunction = *pImportTableEntry;
-
 				MemoryProtection oldProtect;
 				NativeMethods.VirtualProtect((nint)pImportTableEntry, sizeof(nint), MemoryProtection.ReadWrite, &oldProtect);
 				//Replace the original function pointer in the IAT with the hook pointer;
@@ -77,6 +83,9 @@ public class ImportHook : INativeHook
 
 	unsafe public bool RemoveHook()
 	{
+		if (IsDisposed)
+			throw new ObjectDisposedException(nameof(JumpHook));
+
 		lock (this)
 		{
 			if (!IsHooked) return false;
@@ -126,4 +135,13 @@ public class ImportHook : INativeHook
 	private string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 	public override string ToString()
 		=> $"{HookedModule.ModuleName ?? HookedModule.FileName ?? "[MODULE]"}<{ImportedModuleName.RemoveDllExtension()}.{ImportedFunctionName}>";
+
+	public void Dispose()
+	{
+		if (!IsDisposed)
+		{
+			RemoveHook();
+			IsDisposed = true;
+		}
+	}
 }

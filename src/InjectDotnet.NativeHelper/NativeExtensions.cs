@@ -177,7 +177,7 @@ unsafe public static class NativeExtensions
 	/// Get <see cref="ProcessModule"/>s by <see cref="ProcessModule.ModuleName"/> or <see cref="ProcessModule.FileName"/>
 	/// </summary>
 	/// <param name="proc">The process whose modules are searched for matches</param>
-	/// <param name="libraryName">The ModuleName or FileName of the module. Case insensitive and file extension is ignored.</param>
+	/// <param name="pattern"><see cref="Regex"/> pattern to match to the ModuleName or FileName of the module</param>
 	/// <returns>All modules with matching names</returns>
 	public static IEnumerable<ProcessModule> GetModulesByName(this Process proc, Regex pattern)
 	{
@@ -249,7 +249,7 @@ unsafe public static class NativeExtensions
 					iatEntryRVA - importSection.VirtualAddress + importSection.PointerToRawData;
 #if X64
 				long entry = peFile.ReadInt64();
-#else
+#elif X86
 				long entry = peFile.ReadInt32();
 #endif
 
@@ -382,7 +382,7 @@ unsafe public static class NativeExtensions
 
 #if X64
 		0x84;
-#else
+#elif X86
 		0x74;
 #endif
 		var numRvaAndSizes = *(int*)pStructs;

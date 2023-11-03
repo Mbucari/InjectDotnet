@@ -24,6 +24,10 @@
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <DefineConstants>$(DefineConstants);X64</DefineConstants>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)'=='x86'">
+    <DefineConstants>$(DefineConstants);X86</DefineConstants>
+  </PropertyGroup>
 	
   <ItemGroup>
 	 <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />

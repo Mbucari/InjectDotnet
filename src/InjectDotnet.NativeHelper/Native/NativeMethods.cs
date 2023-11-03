@@ -1,5 +1,4 @@
-﻿using Microsoft.Win32.SafeHandles;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper.Native;
@@ -10,6 +9,7 @@ public static class NativeMethods
 	public const string ADVAPI32 = "advapi32.dll";
 
 	[DllImport(KERNEL32, SetLastError = true)]
+#pragma warning disable CA1401 // P/Invokes should not be visible
 	public static extern nint GetProcAddress(nint hModule, ushort ordinal);
 
 	[DllImport(KERNEL32, SetLastError = true)]
@@ -24,11 +24,15 @@ public static class NativeMethods
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern nint VirtualAlloc(nint lpAddress, nint dwSize, AllocationType flAllocationType, MemoryProtection flProtect);
 
-	[DllImport(KERNEL32, CharSet = CharSet.Unicode, ExactSpelling = true)]
+	[DllImport(KERNEL32, CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
 	public static extern bool VirtualFree(IntPtr lpAddress, int dwSize, FreeType dwFreeType);
 
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern int VirtualQuery(nint lpAddress, out MemoryBasicInformation lpBuffer, int dwLength);
+
+	[DllImport(KERNEL32, CharSet = CharSet.Unicode)]
+	public static extern void OutputDebugString(string message);
+
 
 
 	/// <summary>
@@ -76,87 +80,14 @@ public static class NativeMethods
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern unsafe bool GetThreadContext(IntPtr hThread, Context* lpContext);
 
+
+
+	[UnmanagedFunctionPointer(CallingConvention.StdCall)]
+	public delegate int ExceptionHandlerDelegate(ref ExceptionPointers exceptionInfo);
+
 	[DllImport(KERNEL32, SetLastError = true)]
-	public unsafe static extern nint AddVectoredExceptionHandler(uint first, delegate* unmanaged[Stdcall]<ExceptionPointers*, int> Handler);
-	
+	public static extern nint AddVectoredExceptionHandler([MarshalAs(UnmanagedType.Bool)] bool first, ExceptionHandlerDelegate Handler);
+
 	[DllImport(KERNEL32, SetLastError = true)]
 	public static extern bool RemoveVectoredExceptionHandler(IntPtr handle);
-
-
-	[DllImport(ADVAPI32, SetLastError = true)]
-	[return: MarshalAs(UnmanagedType.Bool)]
-	public static extern bool OpenProcessToken(SafeProcessHandle ProcessHandle, TokenAccessRights DesiredAccess, out SafeAccessTokenHandle TokenHandle);
-
-	[DllImport(ADVAPI32, SetLastError = true, CharSet = CharSet.Auto)]
-	public static extern bool LookupPrivilegeValue(string? lpSystemName, string lpName, out LUID lpLuid);
-
-
-	const int PRIVILEGE_SET_ALL_NECESSARY = 1;
-
-
-	[DllImport(ADVAPI32, SetLastError = true)]
-	public unsafe static extern bool AdjustTokenPrivileges(SafeAccessTokenHandle TokenHandle, bool DisableAllPrivileges,void* NewState, int pstateSize, void* PreviousState, out int ReturnLength);
-
-	
-
-	[DllImport(ADVAPI32, SetLastError = true)]
-	public unsafe static extern bool PrivilegeCheck(SafeAccessTokenHandle TokenHandle, void* RequiredPrivileges, out bool pfResult);
-
-	public static unsafe bool PrivilegeCheck(SafeAccessTokenHandle TokenHandle, Span<LUID_AND_ATTRIBUTES> luid)
-	{
-		Span<byte> inBuffer = new byte[luid.Length * sizeof(LUID_AND_ATTRIBUTES) + 2 * sizeof(int)];
-		var ints = MemoryMarshal.Cast<byte, int>(inBuffer);
-		ints[0] = luid.Length;
-		ints[1] = PRIVILEGE_SET_ALL_NECESSARY;
-
-		var tmpLuids = MemoryMarshal.Cast<byte, LUID_AND_ATTRIBUTES>(inBuffer.Slice(2 * sizeof(int)));
-		luid.CopyTo(tmpLuids);
-
-		bool success, any;
-		fixed (byte* pIn = inBuffer)
-			success =  PrivilegeCheck(TokenHandle, pIn, out any);
-		tmpLuids.CopyTo(luid);
-		return success;
-	}
-
-	public static unsafe bool AdjustTokenPrivileges(SafeAccessTokenHandle TokenHandle, bool DisableAllPrivileges, ReadOnlySpan<LUID_AND_ATTRIBUTES> NewState, out LUID_AND_ATTRIBUTES[]? previousState)
-	{
-		Span<byte> inBuffer = new byte[NewState.Length * sizeof(LUID_AND_ATTRIBUTES) + sizeof(int)];
-
-		MemoryMarshal.Cast<byte, int>(inBuffer)[0] = NewState.Length;
-		MemoryMarshal.Cast<LUID_AND_ATTRIBUTES, byte>(NewState).CopyTo(inBuffer.Slice(sizeof(int)));
-
-		Span<byte> outBuffer = new byte[inBuffer.Length];
-
-		bool success = false;int returnLength;
-		fixed (byte* pNew = inBuffer)
-		{
-			fixed (byte* pPrevious = outBuffer)
-				success = AdjustTokenPrivileges(TokenHandle, DisableAllPrivileges, pNew, outBuffer.Length, pPrevious, out returnLength);
-			
-			if (!success)
-			{
-				outBuffer = new byte[returnLength];
-				fixed (byte* pPrevious = outBuffer)
-					success = AdjustTokenPrivileges(TokenHandle, DisableAllPrivileges, pNew, outBuffer.Length, pPrevious, out returnLength);
-			}
-		}
-
-		if (!success)
-		{
-			previousState = null;
-			return false;
-		}
-
-		int numPrevious = MemoryMarshal.Read<int>(outBuffer);
-
-		var attribs = MemoryMarshal.Cast<byte,LUID_AND_ATTRIBUTES>(outBuffer.Slice(sizeof(int), numPrevious * sizeof(LUID_AND_ATTRIBUTES)));
-		previousState = attribs.ToArray();
-		return true;
-	}
-
-
-	[DllImport(ADVAPI32, SetLastError = true, CharSet = CharSet.Auto)]
-	public static extern bool LookupPrivilegeName(string? lpSystemName, ref LUID lpLuid, System.Text.StringBuilder lpName, [In, Out] ref int cchName);
-
 }

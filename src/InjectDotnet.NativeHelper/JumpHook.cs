@@ -3,6 +3,7 @@ using InjectDotnet.NativeHelper.Native;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet.NativeHelper;
@@ -38,6 +39,7 @@ unsafe public class JumpHook : INativeHook
 			else RemoveHook();
 		}
 	}
+	public bool IsDisposed { get; private set; }
 
 	private bool isHooked;
 	/// <summary>
@@ -83,7 +85,7 @@ unsafe public class JumpHook : INativeHook
 
 		m_pHookJump = memoryBlock + sizeof(byte);
 		*(JMP_ABS*)m_pHookJump = new JMP_ABS(hookFunction);
-#else
+#elif X86
 		//push eax
 		*(byte*)memoryBlock = 0x50;
 		//mov al, [memoryBlock]
@@ -106,10 +108,13 @@ unsafe public class JumpHook : INativeHook
 
 			//Overwrite the target's entry point with a jump the pop eax/rax instruction at MemoryBlock + 1
 			MemoryProtection oldProtect;
-			NativeMethods.VirtualProtect(originalFunc, sizeof(nint), MemoryProtection.ExecuteReadWrite, &oldProtect);
+			NativeMethods.VirtualProtect(originalFunc, sizeof(JMP_REL), MemoryProtection.ExecuteReadWrite, &oldProtect);
+			//Store the original instructions so hook can be disposed
+			m_OriginalEpBytes = *(ulong*)originalFunc;
+			//Write jump to trampoline hook stub
 			*(JMP_REL*)originalFunc = new JMP_REL(MemoryBlock + 1, originalFunc);
 			//Restore IAT's protection
-			NativeMethods.VirtualProtect(originalFunc, sizeof(nint), oldProtect, &oldProtect);
+			NativeMethods.VirtualProtect(originalFunc, sizeof(JMP_REL), oldProtect, &oldProtect);
 		}
 		else
 		{
@@ -122,6 +127,9 @@ unsafe public class JumpHook : INativeHook
 
 	public virtual bool InstallHook()
 	{
+		if (IsDisposed)
+			throw new ObjectDisposedException(nameof(JumpHook));
+
 		lock (this)
 		{
 			if (IsHooked) return false;
@@ -149,6 +157,9 @@ unsafe public class JumpHook : INativeHook
 
 	public virtual bool RemoveHook()
 	{
+		if (IsDisposed)
+			throw new ObjectDisposedException(nameof(JumpHook));
+
 		lock (this)
 		{
 			if (!IsHooked) return false;
@@ -191,7 +202,7 @@ unsafe public class JumpHook : INativeHook
 	{
 		if (nativeFunctionEntryPoint == 0 || hookFunction == 0) return null;
 
-		NativeMethods.VirtualQuery(nativeFunctionEntryPoint, out var mbi, MemoryBasicInformation.NativeSize);
+		NativeMethods.VirtualQuery(nativeFunctionEntryPoint, out var mbi, Unsafe.SizeOf<MemoryBasicInformation>());
 
 		if (!(mbi.Protect
 			is MemoryProtection.Execute
@@ -236,9 +247,29 @@ unsafe public class JumpHook : INativeHook
 		return Create(originalFunc, hookFunction, installAfterCreate, Path.GetFileName(moduleName), exportFuncName);
 	}
 
-
 	[DebuggerBrowsable(DebuggerBrowsableState.Never)]
 	protected virtual string DebuggerDisplay => $"{ToString()}, {nameof(IsHooked)} = {IsHooked}";
 
 	public override string ToString() => $"{OriginalFunction.ToString($"x{IntPtr.Size}")}";
+
+	public virtual void Dispose()
+	{
+		if (!IsDisposed)
+		{
+			if (HasTrampoline)
+			{
+				MemoryProtection oldProtect;
+				NativeMethods.VirtualProtect(m_Trampoline!.TargetAddress, sizeof(ulong), MemoryProtection.ExecuteReadWrite, &oldProtect);
+				*(ulong*)m_Trampoline!.TargetAddress = m_OriginalEpBytes;
+				//Restore IAT's protection
+				NativeMethods.VirtualProtect(m_Trampoline!.TargetAddress, sizeof(ulong), oldProtect, &oldProtect);
+			}
+			else
+				RemoveHook();
+
+			NativeMethods.VirtualFree(MemoryBlock, 0, FreeType.Release);
+			isHooked = false;
+			IsDisposed = true;
+		}
+	}
 }

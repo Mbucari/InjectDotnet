@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.ComponentModel;
 
 namespace InjectDotnet.NativeHelper.Native;
 
@@ -30,6 +29,28 @@ public enum ContextFlags : uint
 [StructLayout(LayoutKind.Sequential, Pack = 16)]
 public struct Context
 {
+	/// <summary>
+	/// Get the thread's context.
+	/// </summary>
+	/// <param name="threadHandle">A handle to the thread whose context is to be retrieved. The handle must have <see cref="ThreadRights.THREAD_GET_CONTEXT"/> access to the thread.</param>
+	/// <param name="flags">A value indicating which portions of the Context structure should be retrieved</param>
+	/// <returns>The thread's context</returns>
+	/// <exception cref="Win32Exception">If failed to get the thread context</exception>
+	public unsafe static Context* GetThreadContext(nint threadHandle, ContextFlags flags = ContextFlags.CONTEXT_ALL)
+	{
+		//Context must be on a 16-byte boundary.
+		var buff = new byte[sizeof(Context) + 8];
+		fixed (byte* b = buff)
+		{
+			var pContext = (Context*)(b + ((int)b & 8));
+			pContext->ContextFlags = ContextFlags.CONTEXT_ALL;
+
+			if (!NativeMethods.GetThreadContext(threadHandle, pContext))
+				throw new Win32Exception($"{nameof(NativeMethods.GetThreadContext)} failed.");
+			return pContext;
+		}
+	}
+
 	public ulong P1Home;          /* 000 */
 	public ulong P2Home;          /* 008 */
 	public ulong P3Home;          /* 010 */
@@ -158,7 +179,7 @@ public unsafe struct XMM_SAVE_AREA32
 	private fixed byte Reserved4[96];
 }
 
-[DebuggerDisplay("{ToString(),nq)")]
+[DebuggerDisplay("{ToString(),nq}")]
 [StructLayout(LayoutKind.Sequential)]
 public struct M128A
 {
@@ -166,12 +187,34 @@ public struct M128A
 	public long Low;
 	public override string ToString() => $"0x{High:X}{Low:X}";
 }
-#else
+#elif X86
 /// <summary>
 /// 32-bit thread context
 /// </summary>
 unsafe public struct Context
 {
+	/// <summary>
+	/// Get the thread's context.
+	/// </summary>
+	/// <param name="threadHandle">A handle to the thread whose context is to be retrieved. The handle must have <see cref="ThreadRights.THREAD_GET_CONTEXT"/> access to the thread.</param>
+	/// <param name="flags">A value indicating which portions of the Context structure should be retrieved</param>
+	/// <returns>The thread's context</returns>
+	/// <exception cref="Win32Exception">If failed to get the thread context</exception>
+	public unsafe static Context* GetThreadContext(nint threadHandle, ContextFlags flags = ContextFlags.CONTEXT_ALL)
+	{
+		//Context must be on a 16-byte boundary.
+		var buff = new byte[sizeof(Context) + 8];
+		fixed (byte* b = buff)
+		{
+			var pContext = (Context*)(b + ((int)b & 8));
+			pContext->ContextFlags = ContextFlags.CONTEXT_ALL;
+
+			if (!NativeMethods.GetThreadContext(threadHandle, pContext))
+				throw new Win32Exception($"{nameof(NativeMethods.GetThreadContext)} failed.");
+			return pContext;
+		}
+	}
+
 	public const int MAXIMUM_SUPPORTED_EXTENSION = 512;
 	public ContextFlags ContextFlags;
 

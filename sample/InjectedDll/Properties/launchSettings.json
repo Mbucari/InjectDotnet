@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "DebugNative_x64": {
+      "commandName": "Executable",
+      "executablePath": "..\\..\\..\\Targets\\HxD64.exe"
+    },
+    "DebugNative_x86": {
+      "commandName": "Executable",
+      "executablePath": "..\\..\\..\\Targets\\HxD32.exe"
+    }
+  }
+}

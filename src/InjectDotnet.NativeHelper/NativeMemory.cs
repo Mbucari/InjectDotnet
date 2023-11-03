@@ -1,7 +1,6 @@
 ﻿using InjectDotnet.NativeHelper.Native;
-using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace InjectDotnet.NativeHelper
 {
@@ -22,9 +21,12 @@ namespace InjectDotnet.NativeHelper
 			if (startAddress < si.MinimumApplicationAddress)
 				startAddress = si.MinimumApplicationAddress;
 
+			startAddress &= startAddress / (nint)si.PageSize * (nint)si.PageSize;
+
+			var mbiSz = Unsafe.SizeOf<MemoryBasicInformation>();
 			do
 			{
-				if (NativeMethods.VirtualQuery(startAddress, out var mbi, MemoryBasicInformation.NativeSize) != MemoryBasicInformation.NativeSize)
+				if (NativeMethods.VirtualQuery(startAddress, out var mbi, mbiSz) != mbiSz)
 					yield break;
 
 				startAddress += mbi.RegionSize;
@@ -41,8 +43,9 @@ namespace InjectDotnet.NativeHelper
 		public static nint FirstFreeAddress(nint baseAddress, ref nint minFreeSize)
 		{
 			var minSize = minFreeSize;
-			foreach (var mbi in EnumerateMemory(baseAddress).Where(m => m.State is MemoryState.MemFree))
+			foreach (var mbi in EnumerateMemory(baseAddress))
 			{
+				if (mbi.State is not MemoryState.MemFree) continue;
 				minFreeSize = mbi.RegionSize - (mbi.BaseAddressRoundedUp - mbi.BaseAddress);
 
 				if (minFreeSize > minSize) return mbi.BaseAddressRoundedUp;
@@ -60,15 +63,6 @@ namespace InjectDotnet.NativeHelper
 		/// <returns>A pointer to the beginning of the free memory block</returns>
 		unsafe public static nint AllocateMemoryNearBase(nint baseAddress)
 		{
-			if (!Environment.Is64BitProcess)
-			{
-				return NativeMethods.VirtualAlloc(
-					0,
-					(nint)MemoryBasicInformation.SystemInfo.PageSize,
-					AllocationType.ReserveCommit,
-					MemoryProtection.ExecuteReadWrite); ;
-			}
-
 			nint minSize = sizeof(nint);
 			nint allocation = 0;
 			do

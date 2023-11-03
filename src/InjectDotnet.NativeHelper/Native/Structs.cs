@@ -11,7 +11,21 @@ public enum FreeType : uint
 }
 
 [Flags]
-public enum AllocationType
+public enum AccessRights : uint
+{
+	DELETE = 0x00010000,
+	READ_CONTROL = 0x00020000,
+	WRITE_DACL = 0x00040000,
+	WRITE_OWNER = 0x00080000,
+	SYNCHRONIZE = 0x00100000,
+	STANDARD_RIGHTS_REQUIRED = DELETE | READ_CONTROL | WRITE_DACL | WRITE_OWNER,
+	STANDARD_RIGHTS_READ = READ_CONTROL,
+	STANDARD_RIGHTS_ALL = 0x001F0000,
+	SPECIFIC_RIGHTS_ALL = 0x0000FFFF,
+}
+
+[Flags]
+public enum AllocationType : uint
 {
 	Commit = 0x1000,
 	Reserve = 0x2000,
@@ -23,6 +37,24 @@ public enum AllocationType
 	WriteWatch = 0x200000,
 	LargePages = 0x20000000,
 	ReserveCommit = Reserve | Commit
+}
+
+[Flags]
+public enum ThreadRights : uint
+{
+	THREAD_TERMINATE = 1,
+	THREAD_SUSPEND_RESUME = 2,
+	THREAD_GET_CONTEXT = 8,
+	THREAD_SET_CONTEXT = 0x10,
+	THREAD_SET_INFORMATION = 0x20,
+	THREAD_QUERY_INFORMATION = 0x40,
+	THREAD_SET_THREAD_TOKEN = 0x80,
+	THREAD_IMPERSONATE = 0x100,
+	THREAD_DIRECT_IMPERSONATION = 0x200,
+	THREAD_SET_LIMITED_INFORMATION = 0x400,
+	THREAD_QUERY_LIMITED_INFORMATION = 0x800,
+	THREAD_RESUME = 0x1000,
+	THREAD_ALL_ACCESS = AccessRights.STANDARD_RIGHTS_REQUIRED | AccessRights.SYNCHRONIZE | 0xFFFF,
 }
 
 /// <summary>
@@ -138,8 +170,6 @@ public readonly struct MemoryBasicInformation
 	/// the <see cref="AllocationProtect"/> member.
 	/// </summary>
 	public readonly MemoryType Type;
-
-	internal unsafe static int NativeSize => sizeof(MemoryBasicInformation);
 
 	private static nint granularityMask;
 	private static SystemInfo? systemInfo;

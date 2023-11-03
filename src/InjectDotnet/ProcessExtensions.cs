@@ -1,10 +1,12 @@
-﻿using System;
+﻿using InjectDotnet.Native;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 
 namespace InjectDotnet;
+
 
 public static class ProcessExtensions
 {
@@ -13,7 +15,7 @@ public static class ProcessExtensions
 
 	static ProcessExtensions()
 	{
-		if (GetExportOffset(NativeMethods.KERNEL32, LOADLIBRARY) is not nint offset)
+		if (GetExportOffset(NativeMethods.Kernel32LibraryName, LOADLIBRARY) is not nint offset)
 			throw new DllNotFoundException();
 		LoadLibrary_Offset = offset;
 	}
@@ -26,7 +28,6 @@ public static class ProcessExtensions
 				Environment.Is64BitOperatingSystem
 				&& NativeMethods.IsWow64Process(proc.SafeHandle, out var is32)
 				&& !is32;
-
 		}
 		catch
 		{
@@ -34,17 +35,46 @@ public static class ProcessExtensions
 		}
 	}
 
+	public static bool HasReadAccess(this MemoryProtection protection)
+		=> protection is
+		MemoryProtection.ReadOnly or
+		MemoryProtection.ReadWrite or
+		MemoryProtection.ExecuteRead or
+		MemoryProtection.ExecuteReadWrite or
+		MemoryProtection.ExecuteWriteCopy or
+		MemoryProtection.WriteCopy or
+		MemoryProtection.WriteCombine;
+
+	public static bool HasWriteAccess(this MemoryProtection protection)
+		=> protection is
+		MemoryProtection.ReadWrite or
+		MemoryProtection.WriteCombine or
+		MemoryProtection.ExecuteReadWrite;
+
+	public static bool HasExecuteAccess(this MemoryProtection protection)
+		=> protection is
+		MemoryProtection.Execute or
+		MemoryProtection.ExecuteRead or
+		MemoryProtection.ExecuteReadWrite or
+		MemoryProtection.ExecuteWriteCopy;
+
+
 	public static IEnumerable<ProcessModule> GetModulesByName(this Process proc, string name)
 	{
 		proc.Refresh();
-		return proc.Modules
+
+		return
+			proc.Modules
 			.Cast<ProcessModule>()
 			.Where(m =>
 				m.ModuleName?.Equals(name, StringComparison.OrdinalIgnoreCase) is true ||
 				m.FileName?.Equals(name, StringComparison.OrdinalIgnoreCase) is true);
 	}
 
-	public static ProcessModule GetKernel32(this Process proc) => proc.GetModulesByName(NativeMethods.KERNEL32).Single();
+	public static ProcessModule GetKernel32(this Process proc)
+	{
+		return proc.GetModulesByName(NativeMethods.Kernel32LibraryName).Single();
+	}
 
 	public static ProcessModule? LoadLibrary(this Process proc, string dll)
 	{
@@ -78,12 +108,10 @@ public static class ProcessExtensions
 
 	public static unsafe nint WriteMemory(this Process hProcess, ReadOnlySpan<byte> buffer, MemoryProtection protection = MemoryProtection.ReadWrite)
 	{
-		IntPtr baseAddress = NativeMethods.VirtualAllocEx(hProcess.SafeHandle, IntPtr.Zero, buffer.Length, AllocationType.ReserveCommit, protection);
-
-		int numBytesWritten = 0;
+		IntPtr baseAddress = NativeMethods.VirtualAllocEx(hProcess.Handle, IntPtr.Zero, buffer.Length, AllocationType.ReserveCommit, protection);
 
 		fixed (byte* b = buffer)
-			NativeMethods.WriteProcessMemory(hProcess.SafeHandle, baseAddress, b, buffer.Length, ref numBytesWritten);
+			NativeMethods.WriteProcessMemory(hProcess.Handle, baseAddress, b, buffer.Length, out var numBytesWritten);
 
 		return baseAddress;
 	}
