@@ -208,7 +208,9 @@ public static class Injector
 				debugger.MemoryAccess.WriteMemory(esp + 4, BitConverter.GetBytes(parameter));
 #endif
 				e.Continue = !detatchAfterInjected;
+				return;
 			}
+			e.Continue = true;
 		};
 	}
 
@@ -265,8 +267,10 @@ public static class Injector
 				var esp = e.Context.StackPointer;
 				debugger.MemoryAccess.WriteMemory(esp + 4, BitConverter.GetBytes(parameter));
 #endif
+				e.Continue = !detatchAfterInjected;
+				return;
 			}
-			e.Continue = !detatchAfterInjected;
+			e.Continue = true;
 		};
 	}
 
