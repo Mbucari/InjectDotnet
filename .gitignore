@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/sample/Targets/Settings/HxD Hex Editor.ini
+/sample/Targets/Settings/HxD Hex Editor.lang
