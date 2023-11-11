@@ -1,38 +1,21 @@
-using System.Collections.Concurrent;
+namespace InjectedDll;
 
-namespace InjectedDll
+public partial class Form1 : Form
 {
-	public partial class Form1 : Form
+	public Form1()
 	{
-		private bool shown;
-		readonly Task queueTask;
-		readonly BlockingCollection<string[]> Queue = new();
+		InitializeComponent();
+	}
 
-		public Form1()
+	public async void LogFunction(string timeStamp, string functionName, string logMessage)
+	{
+		var result = BeginInvoke(() =>
 		{
-			InitializeComponent();
-			Shown += (_, _) => shown = true;
-			FormClosing += (_, _) => Queue.CompleteAdding();
-			queueTask = Task.Run(QueueLogger);
-		}
+			var newItem = listView1.Items.Add(new ListViewItem(new string[] { timeStamp, functionName, logMessage }));
+			listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
+			newItem.EnsureVisible();
+		});
 
-		private void QueueLogger()
-		{
-			while (Queue.TryTake(out var log, -1) && !listView1.IsDisposed)
-			{
-				listView1.Invoke(() =>
-				{
-					var newItem = listView1.Items.Add(new ListViewItem(log));
-					listView1.AutoResizeColumns(ColumnHeaderAutoResizeStyle.ColumnContent);
-					newItem.EnsureVisible();
-				});
-			}
-		}
-
-		public void LogFunction(string timeStamp, string functionName, string logMessage)
-		{
-			if (!shown) return;
-			Queue.Add(new string[] { timeStamp, functionName, logMessage });
-		}
+		await Task.Factory.FromAsync(result, EndInvoke);
 	}
 }

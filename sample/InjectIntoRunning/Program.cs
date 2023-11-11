@@ -17,7 +17,6 @@ struct Argument
 	public IntPtr Text;
 	public IntPtr Picture;
 	public int pic_sz;
-	public bool CreateForm;
 }
 
 internal class Program
@@ -48,8 +47,7 @@ internal class Program
 			Title = target.WriteMemory("Injected Form"),
 			Text = target.WriteMemory($"This form has been injected into {target.MainModule?.FileName} and is running in its memory space"),
 			Picture = target.WriteMemory(picBytes),
-			pic_sz = picBytes.Length,
-			CreateForm = true
+			pic_sz = picBytes.Length
 		};
 
 		var result = target.Inject(

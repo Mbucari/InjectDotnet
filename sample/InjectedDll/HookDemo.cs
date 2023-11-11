@@ -27,7 +27,6 @@ struct Argument
 	public IntPtr Text;
 	public IntPtr Picture;
 	public int pic_sz;
-	public bool CreateForm;
 #pragma warning restore CS0649
 
 }
@@ -45,26 +44,25 @@ internal static unsafe partial class HookDemo
 	public static int Bootstrap(IntPtr argument, int size)
 	{
 		#region Load Argument and Create Display Form
+
 		//load the struct from unmanaged memory
 		var arg = Marshal.PtrToStructure<Argument>(argument);
 
-		if (arg.CreateForm)
-		{
-			var title = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)arg.Title));
-			var text = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)arg.Text));
-			var pic = new byte[arg.pic_sz];
-			Marshal.Copy(arg.Picture, pic, 0, pic.Length);
+		var title = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)arg.Title));
+		var label = new string(MemoryMarshal.CreateReadOnlySpanFromNullTerminated((char*)arg.Text));
+		var pic = new byte[arg.pic_sz];
+		Marshal.Copy(arg.Picture, pic, 0, pic.Length);
 
-			using var ms = new MemoryStream(pic);
-			Image img = Image.FromStream(ms);
+		using var ms = new MemoryStream(pic);
+		Image img = Image.FromStream(ms);
 
-			HookViewer = new Form1
-			{
-				Text = new string(title)
-			};
-			HookViewer.label1.Text = text;
-			HookViewer.pictureBox1.Image = img;
-		}
+		using var waitHandle = new ManualResetEvent(false);
+		var t = new Thread(() => RunForm(waitHandle, title, label, img));
+		//Run the form on STA thread so it can use COM
+		t.SetApartmentState(ApartmentState.STA);
+		t.Start();
+		//Wait for the form to finish initializing before continuing
+		waitHandle.WaitOne();
 
 		//Free all arguments from native memory.
 		//The loader handles freeing the argument struct
@@ -169,12 +167,21 @@ internal static unsafe partial class HookDemo
 		#endregion
 		#endregion
 
-		if (arg.CreateForm)
-		{
-			HookViewer!.FormClosing += HookViewer_FormClosing;
-			Application.Run(HookViewer);
-		}
 		return 0x1337;
+	}
+
+	private static void RunForm(EventWaitHandle waitHandle, string title, string label, Image image)
+	{
+		HookViewer = new Form1
+		{
+			Text = new string(title)
+		};
+		HookViewer.label1.Text = label;
+		HookViewer.pictureBox1.Image = image;
+		HookViewer.FormClosing += HookViewer_FormClosing;
+		waitHandle.Set();
+		Application.EnableVisualStyles();
+		Application.Run(HookViewer);
 	}
 
 	private static void HookViewer_FormClosing(object? sender, FormClosingEventArgs e)

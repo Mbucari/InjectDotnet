@@ -26,7 +26,7 @@ target.Inject(
 	"InjectedDll.runtimeconfig.json",
 	"InjectedDll.dll",
 	"InjectedDll.HookDemo, InjectedDll, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null",
-	"Bootstrap"
+	"Bootstrap",
 	"this is an argument passed to the injected dll's Bootstrap() method");
 ```
 

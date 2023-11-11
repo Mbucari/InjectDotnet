@@ -12,14 +12,16 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sample", "sample", "{C42930AA-918A-4A25-9091-29EF5A58FADE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectedDll", "sample\InjectedDll\InjectedDll.csproj", "{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}"
-	ProjectSection(ProjectDependencies) = postProject
-		{230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6} = {230DD5A1-0E4B-43AF-A279-FD50DDC3DAD6}
-		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD} = {A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectIntoRunning", "sample\InjectIntoRunning\InjectIntoRunning.csproj", "{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8} = {6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectAtStartup", "sample\InjectAtStartup\InjectAtStartup.csproj", "{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}"
+	ProjectSection(ProjectDependencies) = postProject
+		{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8} = {6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -17,7 +17,6 @@ struct Argument
 	public IntPtr Text;
 	public IntPtr Picture;
 	public int pic_sz;
-	public bool CreateForm;
 }
 
 internal class Program
@@ -27,7 +26,6 @@ internal class Program
 
 	static async Task Main()
 	{
-		var exists = File.Exists(Target);
 		var debugger = new Debugger(Target, arguments: null);
 		var picBytes = File.ReadAllBytes("dotnet.png");
 
@@ -36,8 +34,7 @@ internal class Program
 			Title = debugger.WriteMemory("Injected Form"),
 			Text = debugger.WriteMemory($"This form has been injected into {debugger.ImagePath} and is running in its memory space"),
 			Picture = debugger.WriteMemory(picBytes),
-			pic_sz = picBytes.Length,
-			CreateForm = false //Because we're injecting at startup, the Bootstrap method must return before the program can continue
+			pic_sz = picBytes.Length
 		};
 
 		//Injection must occur before calling ResumeProcessAsync()
