@@ -49,9 +49,13 @@ public class Debugger
 	/// </summary>
 	public event EventHandler<ExitProcessEventArgs>? ExitProcess;
 	/// <summary>
-	/// Occurs when a breakpoint exception has encountered.
+	/// Occurs when a breakpoint exception is encountered.
 	/// </summary>
 	public event EventHandler<BreakpointEventArgs>? Breakpoint;
+	/// <summary>
+	/// Occurs when a single step exception is encountered.
+	/// </summary>
+	public event EventHandler<SingleStepEventArgs>? SingleStep;
 	/// <summary>
 	/// Occurs when a RIP (rest in peace) error has occurred.
 	/// </summary>
@@ -453,11 +457,9 @@ public class Debugger
 		switch (debugEvent.u.Exception.ExceptionRecord.ExceptionCode)
 		{
 			case ExceptionCode.EXCEPTION_BREAKPOINT:
-				passException = false;
-				return OnBreakpoint(debugEvent);
+				return OnBreakpoint(debugEvent, out passException);
 			case ExceptionCode.EXCEPTION_SINGLE_STEP:
-				passException = false;
-				return OnSingleStep(debugEvent);
+				return OnSingleStep(debugEvent, out passException);
 			case ExceptionCode.CLRDBG_NOTIFICATION_EXCEPTION_CODE:
 				passException = true;
 				return true;
@@ -465,13 +467,13 @@ public class Debugger
 				using (var args = new ExceptionEventArgs(MemoryAccess, debugEvent))
 				{
 					Exception?.Invoke(this, args);
-					passException = args.Handled;
+					passException = !args.Handled;
 					return args.Continue;
 				}
 		}
 	}
 
-	protected virtual bool OnBreakpoint(DebugEvent debugEvent)
+	protected virtual bool OnBreakpoint(DebugEvent debugEvent, out bool passException)
 	{
 		var address = debugEvent.u.Exception.ExceptionRecord.ExceptionAddress;
 
@@ -483,6 +485,7 @@ public class Debugger
 
 			using var args = new BreakpointEventArgs(BreakType.System, debugEvent);
 			Breakpoint?.Invoke(this, args);
+			passException = !args.Handled;
 			return args.Continue;
 		}
 		else if (Breakpoints.GetByAddress(address) is UserBreakpoint bp)
@@ -495,6 +498,7 @@ public class Debugger
 				using var args = new BreakpointEventArgs(BreakType.EntryPoint, debugEvent);
 				args.Context.InstructionPointer--;
 				Breakpoint?.Invoke(this, args);
+				passException = !args.Handled;
 				return args.Continue;
 			}
 			else
@@ -514,6 +518,7 @@ public class Debugger
 					BreaksToResume[args.ThreadId] = bp;
 				}
 
+				passException = !args.Handled;
 				return args.Continue;
 			}
 		}
@@ -521,15 +526,14 @@ public class Debugger
 		{
 			using var args = new BreakpointEventArgs(BreakType.Other, debugEvent);
 			Breakpoint?.Invoke(this, args);
+			passException = !args.Handled;
 			return args.Continue;
 		}
 	}
 
-	protected virtual bool OnSingleStep(DebugEvent debugEvent)
+	protected virtual bool OnSingleStep(DebugEvent debugEvent, out bool passException)
 	{
-		using var args = new BreakpointEventArgs(BreakType.SingleStep, debugEvent);
-		args.Context.EFlags &= ~Flags.TF;
-		args.Context.EFlags |= Flags.RF;
+		using var args = new SingleStepEventArgs(debugEvent);
 
 		if (BreaksToResume.Remove(debugEvent.ThreadId, out var bp))
 		{
@@ -537,10 +541,23 @@ public class Debugger
 			bp.TryEnable();
 
 			if (!bp.NotifySingleStep)
+			{
+				args.Context.EFlags &= ~Flags.TF;
+				args.Context.EFlags |= Flags.RF;
+				passException = false;
 				return true;
+			}
 		}
 
-		Breakpoint?.Invoke(this, args);
+		SingleStep?.Invoke(this, args);
+		passException = !args.Handled;
+
+		if (args.Handled)
+		{
+			args.Context.EFlags &= ~Flags.TF;
+			args.Context.EFlags |= Flags.RF;
+		}
+
 		return args.Continue;
 	}
 }

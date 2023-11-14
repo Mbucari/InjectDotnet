@@ -136,37 +136,46 @@ public static class ProcessExtensions
 
 	public static int? Call(this Process proc, IntPtr function, IntPtr argument, bool waitForExit = true)
 	{
-		IntPtr hThread;
+		IntPtr hThread = NativeMethods.CreateRemoteThread(proc.SafeHandle, IntPtr.Zero, 0, function, argument, 0, out _);
+
 		try
 		{
-			hThread = NativeMethods.CreateRemoteThread(proc.SafeHandle, IntPtr.Zero, 0, function, argument, 0, out _);
+			if (!waitForExit) return null;
+
+			NativeMethods.WaitForSingleObject(hThread, -1);
+
+			proc.Free(argument);
+
+			bool isSucceeded = NativeMethods.GetExitCodeThread(hThread, out int exitCode);
+
+			return isSucceeded ? exitCode : null;
 		}
 		catch
 		{
 			proc.Free(argument);
 			throw;
 		}
-
-		if (!waitForExit) return null;
-
-		NativeMethods.WaitForSingleObject(hThread, -1);
-
-		proc.Free(argument);
-
-		bool isSucceeded = NativeMethods.GetExitCodeThread(hThread, out int exitCode);
-
-		NativeMethods.CloseHandle(hThread);
-
-		return isSucceeded ? exitCode : null;
+		finally
+		{
+			NativeMethods.CloseHandle(hThread);
+		}
 	}
 
-	private static nint? GetExportOffset(string library, string functionName)
+	public static nint? GetExportOffset(string library, string functionName)
 	{
-		if (!NativeLibrary.TryLoad(library, out nint hModule)) return null;
-		if (!NativeLibrary.TryGetExport(hModule, functionName, out nint hExport)) return null;
+		if (!NativeLibrary.TryLoad(library, out nint hModule))
+			return null;
 
-		NativeLibrary.Free(hModule);
+		try
+		{
+			if (!NativeLibrary.TryGetExport(hModule, functionName, out nint hExport))
+				return null;
 
-		return hExport - hModule;
+			return hExport - hModule;
+		}
+		finally
+		{
+			NativeLibrary.Free(hModule);
+		}
 	}
 }

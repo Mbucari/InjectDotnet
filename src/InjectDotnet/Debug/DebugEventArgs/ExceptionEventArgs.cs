@@ -3,17 +3,16 @@ using System;
 
 namespace InjectDotnet.Debug;
 
-/// <summary>
-/// Provides exception information for the <see cref="Debugger.Exception"/> event.
-/// </summary>
-public class ExceptionEventArgs : ContinuableDebuggerEventArgs
+public interface IException
 {
 	/// <summary>
-	/// An <see cref="Debug.ExceptionRecord"/> structure with information specific to
-	/// the exception. This includes the exception code, flags, address, a
-	/// pointer to a related exception, extra parameters, and so on.
+	/// The address where the exception occurred.
 	/// </summary>
-	public ExceptionRecord ExceptionRecord { get; }
+	nint Address { get; }
+	/// <summary>
+	/// Gets or sets a value indicating whether the <see cref="Debugger"/> has handled this exception.
+	/// </summary>
+	bool Handled { get; set; }
 	/// <summary>
 	/// A value that indicates whether the debugger has previously encountered the
 	/// exception specified by the <see cref="ExceptionRecord"/> member. If <see cref="true"/>,
@@ -23,17 +22,30 @@ public class ExceptionEventArgs : ContinuableDebuggerEventArgs
 	/// occurs only if, during the search for structured exception handlers, either no handler
 	/// was found or the exception was continued.
 	/// </summary>
-	public bool FirstChance { get; }
+	bool FirstChance { get; }
+}
+
+/// <summary>
+/// Provides exception information for the <see cref="Debugger.Exception"/> event.
+/// </summary>
+public class ExceptionEventArgs : ContinuableDebuggerEventArgs, IException
+{
 	/// <summary>
-	/// Gets or sets a value indicating whether the <see cref="Debugger"/> has handled this exception.
+	/// An <see cref="Debug.ExceptionRecord"/> structure with information specific to
+	/// the exception. This includes the exception code, flags, address, a
+	/// pointer to a related exception, extra parameters, and so on.
 	/// </summary>
-	public bool Handled { get; set; } = true;
+	public ExceptionRecord ExceptionRecord { get; }
+	public bool Handled { get; set; }
+	public bool FirstChance { get; }
+	public nint Address { get; }
 
 	internal ExceptionEventArgs(IMemoryReader memoryReader, DebugEvent debugEvent)
 		: base(debugEvent)
 	{
 		FirstChance = debugEvent.u.Exception.dwFirstChance != 0;
 		ExceptionRecord = new ExceptionRecord(memoryReader, debugEvent.u.Exception.ExceptionRecord);
+		Address = debugEvent.u.Exception.ExceptionRecord.ExceptionAddress;
 	}
 }
 

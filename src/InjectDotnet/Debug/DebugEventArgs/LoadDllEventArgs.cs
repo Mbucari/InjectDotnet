@@ -25,6 +25,10 @@ public class LoadDllEventArgs : ContinuableDebuggerEventArgs
 	/// </remarks>
 	public string? ImageName { get; }
 	/// <summary>
+	/// The name of the Module. Subject to the same limitations as <see cref="ImageName"/>
+	/// </summary>
+	public string ModuleName { get; }
+	/// <summary>
 	/// A pointer to the base address of the DLL in the address space of the
 	/// process loading the DLL.
 	/// </summary>
@@ -59,12 +63,10 @@ public class LoadDllEventArgs : ContinuableDebuggerEventArgs
 		DebugInfoFileOffset = debugEvent.u.LoadDll.dwDebugInfoFileOffset;
 		File = new(debugEvent.u.LoadDll.hFile, false);
 		ImageName = debugEvent.u.LoadDll.ReadImageNameFromTarget(memoryReader);
+		ModuleName = ImageName is null ? "unknown" : System.IO.Path.GetFileName(ImageName);
 	}
 
-	public override string? ToString()
-	{
-		return ImageName is null ? "unknown" : System.IO.Path.GetFileName(ImageName);
-	}
+	public override string? ToString() => ModuleName;
 
 	protected override void Dispose(bool disposing)
 	{

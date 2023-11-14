@@ -162,14 +162,6 @@ public class BreakpointHook : INativeHook
 		if (bp.ResumeIP != 0)
 			exceptionInfo.ContextRecord->InstructionPointer = bp.ResumeIP;
 
-		if (Debugger.IsAttached)
-		{
-			//Cannot properly resume execution from STATUS_SINGLE_STEP while being debugged,
-			//so disable the breakpoint before continuing execution.
-			bp.Enabled = BreakEnabled.Disabled;
-			exceptionInfo.ContextRecord->Dr.SetEnabled(regIdx, BreakEnabled.Disabled);
-		}
-
 		return EXCEPTION_CONTINUE_EXECUTION;
 	}
 

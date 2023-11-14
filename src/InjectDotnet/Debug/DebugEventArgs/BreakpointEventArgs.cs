@@ -1,4 +1,5 @@
 ﻿using InjectDotnet.Native;
+using System;
 
 namespace InjectDotnet.Debug;
 
@@ -14,10 +15,6 @@ public enum BreakType
 	/// </summary>
 	EntryPoint,
 	/// <summary>
-	/// A single-step break.
-	/// </summary>
-	SingleStep,
-	/// <summary>
 	/// A user-defined memory breakpoint. See <see cref="UserBreakpoint"/>.
 	/// </summary>
 	UserMemory,
@@ -26,12 +23,11 @@ public enum BreakType
 /// <summary>
 /// Provides exception information for the <see cref="Debugger.Breakpoint"/> event.
 /// </summary>
-public class BreakpointEventArgs : ContinuableDebuggerEventArgs
+public class BreakpointEventArgs : ContinuableDebuggerEventArgs, IException
 {
-	/// <summary>
-	/// The address where the exception occurred.
-	/// </summary>
 	public nint Address { get; }
+	public bool FirstChance { get; }
+	public bool Handled { get; set; } = true;
 	/// <summary>
 	/// The type of breakpoint encountered.
 	/// </summary>
@@ -46,11 +42,12 @@ public class BreakpointEventArgs : ContinuableDebuggerEventArgs
 	{
 		Type = type;
 		Address = debugEvent.u.Exception.ExceptionRecord.ExceptionAddress;
+		FirstChance = debugEvent.u.Exception.dwFirstChance != 0;
 		Breakpoint = breakpoint;
 	}
 
 	public override string ToString()
 	{
-		return $"{Type} Break: 0x{Address:x}";
+		return $"{Type} Break: 0x" + Address.ToString($"x{IntPtr.Size * 2}");
 	}
 }
