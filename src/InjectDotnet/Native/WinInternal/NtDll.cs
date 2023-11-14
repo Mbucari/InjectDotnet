@@ -151,8 +151,10 @@ internal static class NtDll
 
 	internal struct CURDIR
 	{
+#pragma warning disable CS0649 // Field 'NtDll.CURDIR.DosPath' is never assigned to, and will always have its default value
 		public UNICODE_STRING DosPath;
 		public nint Handle;
+#pragma warning restore CS0649
 	}
 
 	internal struct UNICODE_STRING
