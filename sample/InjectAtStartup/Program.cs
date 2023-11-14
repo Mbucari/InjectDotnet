@@ -45,16 +45,40 @@ internal class Program
 			"Bootstrap",
 			arg,
 			detatchAfterInjected: false);
+		//NOTE: By not detatching after injecting, the Hardware breakpoint hook
+		//will be caught by the debugger. For it to work we need to not handle
+		//the single step event that occurs at kernel32.WriteFile.
 
 		debugger.OutputDebugString += Debugger_OutputDebugString;
 		debugger.ExitProcess += Debugger_ExitProcess;
+		debugger.SingleStep += Debugger_SingleStep;
+		debugger.LoadDll += Debugger_LoadDll;
 
 		await debugger.ResumeProcessAsync();
 	}
 
+	private static void Debugger_LoadDll(object? sender, LoadDllEventArgs e)
+	{
+		if (e.ModuleName.Equals("kernel32.dll", StringComparison.OrdinalIgnoreCase) is true)
+		{
+			//Get the address of kernel32.WriteFile.
+			using var proc = e.GetProcess();
+			if (ProcessExtensions.GetExportOffset("kernel32.dll", "WriteFile") is nint offset)
+				Address = e.BaseOfDll + offset;
+		}
+	}
+
+	static nint Address;
+
+	private static void Debugger_SingleStep(object? sender, SingleStepEventArgs e)
+	{
+		//Don't handle the hardware breakpoint at kernel32.WriteFile.
+		e.Handled = e.Address != Address;
+	}
+
 	private static void Debugger_ExitProcess(object? sender, ExitProcessEventArgs e)
 	{
-		Console.WriteLine($"Process exited with code {e.ExitCode}");
+		Console.WriteLine($"Process exited with code 0x{e.ExitCode:x}");
 	}
 
 	private static void Debugger_OutputDebugString(object? sender, OutputDebugStringEventArgs e)

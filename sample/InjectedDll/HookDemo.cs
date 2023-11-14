@@ -61,7 +61,9 @@ internal static unsafe partial class HookDemo
 		//Run the form on STA thread so it can use COM
 		t.SetApartmentState(ApartmentState.STA);
 		t.Start();
-		//Wait for the form to finish initializing before continuing
+		//Wait for the form to load before continuing.
+		//Use a wait handle instead of hooking on form load so that
+		//all hooks are installed before Bootstrap returns.
 		waitHandle.WaitOne();
 
 		//Free all arguments from native memory.
@@ -159,7 +161,6 @@ internal static unsafe partial class HookDemo
 				WriteFile_original =
 					(delegate* unmanaged[Stdcall]<nint, byte*, int, int*, nint, BOOL>)
 				hook.OriginalFunction;
-
 				hook.InstallHook();
 			}
 		}
@@ -179,7 +180,7 @@ internal static unsafe partial class HookDemo
 		HookViewer.label1.Text = label;
 		HookViewer.pictureBox1.Image = image;
 		HookViewer.FormClosing += HookViewer_FormClosing;
-		waitHandle.Set();
+		HookViewer.Load += (_, _) => waitHandle.Set();
 		Application.EnableVisualStyles();
 		Application.Run(HookViewer);
 	}
