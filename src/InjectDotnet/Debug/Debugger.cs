@@ -525,6 +525,7 @@ public class Debugger
 		else
 		{
 			using var args = new BreakpointEventArgs(BreakType.Other, debugEvent);
+			args.Handled = false;
 			Breakpoint?.Invoke(this, args);
 			passException = !args.Handled;
 			return args.Continue;
