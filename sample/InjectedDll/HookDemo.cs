@@ -34,8 +34,8 @@ struct Argument
 internal static unsafe partial class HookDemo
 {
 
-	[LibraryImport("Kernel32.dll", SetLastError = true)]
-	private static partial int GetFinalPathNameByHandleW(IntPtr hFile, char* lpszFilePath, int cchFilePath, uint dwFlags);
+	[DllImport("Kernel32.dll", SetLastError = true)]
+	private static extern int GetFinalPathNameByHandleW(IntPtr hFile, char* lpszFilePath, int cchFilePath, uint dwFlags);
 
 	/// <summary>
 	/// The InjectedDll's entry point.

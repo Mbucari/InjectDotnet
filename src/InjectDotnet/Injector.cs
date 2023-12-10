@@ -314,22 +314,27 @@ public static class Injector
 		runtimeconfig = Path.GetFullPath(runtimeconfig);
 		dllToInject = Path.GetFullPath(dllToInject);
 
-		JsonNode options
-			= JsonNode.Parse(File.ReadAllText(runtimeconfig))?["runtimeOptions"]
-			?? throw new KeyNotFoundException($"Could not 'runtimeOptions' from runtimeconfig.json");
+		string? hostPath = target.GetHostFxrLib();
+		if (hostPath is null)
+		{
+			//Target is not a .NET process, so find the appropriate hostfxr.dll to load the CLR
+			JsonNode options
+				= JsonNode.Parse(File.ReadAllText(runtimeconfig))?["runtimeOptions"]
+				?? throw new KeyNotFoundException($"Could not 'runtimeOptions' from runtimeconfig.json");
 
-		Version? runtimeVersion
-			= tryGetVersion(options["framework"])
-			?? options["frameworks"]?.AsArray().Select(tryGetVersion).FirstOrDefault(v => v is not null)
-			?? throw new KeyNotFoundException($"Could not determine the Microsoft.NETCore.App runtime from runtimeconfig.json");
+			Version? runtimeVersion
+				= tryGetVersion(options["framework"])
+				?? options["frameworks"]?.AsArray().Select(tryGetVersion).FirstOrDefault(v => v is not null)
+				?? throw new KeyNotFoundException($"Could not determine the Microsoft.NETCore.App runtime from runtimeconfig.json");
 
-		Version installedRuntimeVer
-			= GetInstalledFrameworks().FirstOrDefault(v => v >= runtimeVersion)
-			?? throw new DirectoryNotFoundException($"Could not find installed Microsoft.NETCore.App runtime with version >= {runtimeVersion:3}");
+			Version installedRuntimeVer
+				= GetInstalledFrameworks().FirstOrDefault(v => v >= runtimeVersion)
+				?? throw new DirectoryNotFoundException($"Could not find installed Microsoft.NETCore.App runtime with version >= {runtimeVersion:3}");
 
-		string hostPath
-			= GetHosthostfxrPath(installedRuntimeVer)
-			?? throw new FileNotFoundException($"Could not find the {PLATFORM} hostfxr.dll for runtime version {runtimeVersion:3}");
+			hostPath
+				= GetHosthostfxrPath(installedRuntimeVer)
+				?? throw new FileNotFoundException($"Could not find the {PLATFORM} hostfxr.dll for runtime version {runtimeVersion:3}");
+		}
 
 		var k3dMod = target.GetKernel32();
 

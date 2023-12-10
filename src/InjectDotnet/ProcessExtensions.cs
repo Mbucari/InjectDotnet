@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 
 namespace InjectDotnet;
 
-
 public static class ProcessExtensions
 {
 	private const string LOADLIBRARY = "LoadLibraryW";
@@ -34,6 +33,9 @@ public static class ProcessExtensions
 			return null;
 		}
 	}
+
+	public static string? GetHostFxrLib(this Process process)
+		=> process.GetModulesByName("hostfxr.dll").FirstOrDefault()?.FileName;
 
 	public static bool HasReadAccess(this MemoryProtection protection)
 		=> protection is
