@@ -32,9 +32,17 @@ target.Inject(
 
 You may optionally wait for bootstrap method to return to receive it's return code, and the injector supports passing structs with additional data to the injected dll (see the samples prokjects).
 
+### Injecting into .NET Targets
+**InjectDotnet** supports injecting into managed target processes, but there are some limitations.
+1. The injected Dll's required frameworks must be compatible with the frameworks loaded by the runtime already in the target process. For instance, you cannot inject a .NET 7 dll into a .NET 6 target process.
+2. Injecting into self-contained apps is supported, but single-file apps are not supported.
+3. Injecting into a new managed process at startup is not supported.
+
+If `Inject()` fails to load the CLR in the target process, it returns the [host fxr error code](https://github.com/dotnet/runtime/blob/main/docs/design/features/host-error-codes.md). `Inject()` must be called with `waitForReturn: true` for the error code to be returned.
+
 ## Inject Into a New Process at Startup
 
-**InjectDotnet** Supports injecting managed Dlls at the entry point of a process using its built-in debugger.
+**InjectDotnet** supports injecting managed Dlls at the entry point of a process using its built-in debugger.
 
 It's as simple as the following example.
 
