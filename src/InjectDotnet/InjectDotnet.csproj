@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Title>InjectDotnet</Title>
-	<Version>0.3.2</Version>
+	<Version>0.3.3</Version>
 	<Authors>MrGneissGuy</Authors>
     <Description>Inject .NET Core Dlls into x86/x64 native processes</Description>
     <ProjectUrl>https://github.com/Mbucari/InjectDotnet</ProjectUrl>
