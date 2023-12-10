@@ -41,11 +41,25 @@ public static class Injector
  0x48, 0x31, 0xD2,						//xor rdx, rdx
  0x48, 0x8B, 0x4D, 0x50,				//mov rcx, [Arg.str_runtimeconfig]
  0xFF, 0x55, 0x00,						//call [Arg.fnConfig]
+ 0x48, 0x85, 0xC0,						//test rax,rax
+ 0x74, 0x14,							//je GETDELEGATE
+ 0x48, 0x83, 0xF8, 0x01,				//cmp rax,1
+ 0x74, 0x0e,							//je GETDELEGATE
+ 0x48, 0x83, 0xF8, 0x02,				//cmp rax,2
+ 0x74, 0x08,							//je GETDELEGATE
+ 0x89, 0xC1,							//mov ecx,eax
+ 0xFF, 0x95, 0xA0, 0x00, 0x00, 0x00,	//call [fnExitThread]
+//GETDELEGATE:
  0x4C, 0x8D, 0x45, 0x40,				//mov r8, [Arg._delegate]
  0x48, 0x31, 0xD2,						//xor rdx, rdx
  0xB2, 0x05,							//mov dl, hostfxr_delegate_type.hdt_load_assembly_and_get_function_pointer
  0x48, 0x8B, 0x4D, 0x38,				//mov rcx [Arg._context]
  0xFF, 0x55, 0x08,						//call [Arg.fnGetDelegate]
+ 0x48, 0x85, 0xC0,						//test rax,rax
+ 0x74, 0x08,							//je GETDELEGATE
+ 0x89, 0xC1,							//mov ecx,eax
+ 0xFF, 0x95, 0xA0, 0x00, 0x00, 0x00,	//call [fnExitThread]
+ //CLOSECONTEXT
  0x48, 0x8B, 0x4D, 0x38,				//mov rcx, [Arg._context]
  0xFF, 0x55, 0x10,						//call [Arg.fnClose]
  0x48, 0x8D, 0x45, 0x48,				//lea rax, [Arg._method_fn]
@@ -108,11 +122,25 @@ public static class Injector
  0x6A, 0x00,					//push 0
  0xFF, 0x75, 0x50,				//push [Arg.str_runtimeconfig]
  0xFF, 0x55, 0x00,				//call [Arg.fnConfig]
+ 0x85, 0xC0,					//test rax,rax
+ 0x74, 0x11,					//je GETDELEGATE
+ 0x83, 0xF8, 0x01,				//cmp rax,1
+ 0x74, 0x0c,					//je GETDELEGATE
+ 0x83, 0xF8, 0x02,				//cmp rax,2
+ 0x74, 0x07,					//je GETDELEGATE
+ 0x50,							//push eax
+ 0xFF, 0x95, 0xA0, 0x00, 0x00, 0x00,	//call [fnExitThread]
+//GETDELEGATE:
  0x8D, 0x45, 0x40,				//lea eax, [Arg._delegate]
  0x50,							//push eax
  0x6A, 0x05,					//push hostfxr_delegate_type.hdt_load_assembly_and_get_function_pointer
  0xFF, 0x75, 0x38,				//push [Arg._context]
  0xFF, 0x55, 0x08,				//call [Arg.fnGetDelegate]
+ 0x85, 0xC0,					//test rax,rax
+ 0x74, 0x07,					//je CLOSECONTEXT
+ 0x50,							//push eax
+ 0xFF, 0x95, 0xA0, 0x00, 0x00, 0x00,	//call [fnExitThread]
+ //CLOSECONTEXT
  0xFF, 0x75, 0x38,				//push [Arg._context]
  0xFF, 0x55, 0x10,				//call [Arg.fnClose]
  0x8D, 0x45, 0x48,				//lea eax, [Arg._method_fn]
@@ -347,6 +375,7 @@ public static class Injector
 				fnVirtualFree = k3dMod.GetProcAddress("VirtualFree"),
 				fnLoadLibrary = k3dMod.GetProcAddress("LoadLibraryW"),
 				fnGetProcAddress = k3dMod.GetProcAddress("GetProcAddress"),
+				fnExitThread = k3dMod.GetProcAddress("ExitThread"),
 				fnEntryPoint = entryPoint ? target.MainModule?.EntryPointAddress ?? IntPtr.Zero : 0,
 				str_runtimeconfig = target.WriteMemory(runtimeconfig),
 				str_dll_path = target.WriteMemory(dllToInject),

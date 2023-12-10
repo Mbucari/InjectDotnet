@@ -46,4 +46,6 @@ internal struct InjectParams
 	public nint args;
 	[FieldOffset(0x98)]
 	public int sz_args;
+	[FieldOffset(0xa0)]
+	public nint fnExitThread;
 }
