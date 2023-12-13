@@ -1,7 +1,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata minClientVersion="3.2">
 		<id>InjectDotnet.NativeHelper</id>
-		<version>0.3.3</version>
+		<version>0.4.0</version>
 		<description>Provides tools for hooking native functions and interacting with native memoy</description>
 		<authors>MBucari</authors>
 		<repository type="git" url="https://github.com/Mbucari/InjectDotnet.git" branch="master" />
@@ -12,23 +12,58 @@
 		<readme>docs\README.md</readme>	
 		<license type="file">LICENSE.txt</license>
 		<dependencies>
+			<group targetFramework="net8.0-windows7.0" />
 			<group targetFramework="net6.0-windows7.0" />
+			<group targetFramework="netstandard2.1" />
+			<group targetFramework="netstandard2.0" />
 		</dependencies>
     </metadata>
 	<dependencies>
+		<group targetFramework="net8.0-windows7.0">
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
+		</group>
 		<group targetFramework="net6.0-windows7.0">
-			<dependency id="Microsoft.SourceLink.GitHub" version="1.1.1" />
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
+		</group>
+		<group targetFramework="netstandard2.1">
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
+		</group>
+		<group targetFramework="netstandard2.0">
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
+			<dependency id="System.Memory" version="4.5.5" />
 		</group>
 	</dependencies>
-    <files>
-        <!-- .NET 6 Windows -->
-        <file src="InjectDotnet.NativeHelper.props" target="build\net6.0-windows7.0" />
-        <file src="_._" target="lib\net6.0-windows7.0" />
-        
-        <file src="InjectDotnet.NativeHelper\bin\x86\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x86" />
-        <file src="InjectDotnet.NativeHelper\bin\x64\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x64" />		
-		
+    <files>		
 		<file src="..\README.md" target="docs\" />
 		<file src="..\LICENSE.txt" target="LICENSE.txt" />
+		
+        <!-- .NET 8 Windows -->
+        
+        <file src="InjectDotnet.NativeHelper\bin\x86\Release\net8.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net8.0-windows7.0\x86" />
+        <file src="InjectDotnet.NativeHelper\bin\x64\Release\net8.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net8.0-windows7.0\x64" />
+        <file src="InjectDotnet.NativeHelper.props" target="build\net8.0-windows7.0" />
+        <file src="_._" target="lib\net8.0-windows7.0" />
+		
+        <!-- .NET 6 Windows -->
+        
+        <file src="InjectDotnet.NativeHelper\bin\x86\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x86" />
+        <file src="InjectDotnet.NativeHelper\bin\x64\Release\net6.0-windows7.0\InjectDotnet.NativeHelper.dll" target="build\net6.0-windows7.0\x64" />
+        <file src="InjectDotnet.NativeHelper.props" target="build\net6.0-windows7.0" />
+        <file src="_._" target="lib\net6.0-windows7.0" />
+		
+        <!-- .NET Standard 2.1 -->
+        
+        <file src="InjectDotnet.NativeHelper\bin\x86\Release\netstandard2.1\InjectDotnet.NativeHelper.dll" target="build\netstandard2.1\x86" />
+        <file src="InjectDotnet.NativeHelper\bin\x64\Release\netstandard2.1\InjectDotnet.NativeHelper.dll" target="build\netstandard2.1\x64" />
+        <file src="InjectDotnet.NativeHelper.props" target="build\netstandard2.1" />
+        <file src="_._" target="lib\netstandard2.1" />
+		
+        <!-- .NET Standard 2.0 -->
+        
+        <file src="InjectDotnet.NativeHelper\bin\x86\Release\netstandard2.0\InjectDotnet.NativeHelper.dll" target="build\netstandard2.0\x86" />
+        <file src="InjectDotnet.NativeHelper\bin\x64\Release\netstandard2.0\InjectDotnet.NativeHelper.dll" target="build\netstandard2.0\x64" />
+        <file src="InjectDotnet.NativeHelper.props" target="build\netstandard2.0" />
+        <file src="_._" target="lib\netstandard2.0" />
+		
     </files>
 </package>

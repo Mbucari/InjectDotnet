@@ -1,6 +1,11 @@
 ﻿using InjectDotnet.NativeHelper.Native;
+using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+#if !NET
+using nint = System.IntPtr;
+#endif
 
 namespace InjectDotnet.NativeHelper
 {
@@ -12,26 +17,37 @@ namespace InjectDotnet.NativeHelper
 		/// <see cref="MemoryBasicInformation.State"/>, and
 		/// <see cref="MemoryBasicInformation.Protect"/> are grouped together in a single <see cref="MemoryBasicInformation"/>.
 		/// </summary>
+		/// <returns>An enumerable collection of memory in this process' virtual address space.</returns>
+		public static IEnumerable<MemoryBasicInformation> EnumerateMemory()
+			=> EnumerateMemory(IntPtr.Zero);
+
+
+		/// <summary>
+		/// Iterate over all memory pages in the current process.<br/>
+		/// Consecutive pages with identical <see cref="MemoryBasicInformation.AllocationBase"/>,
+		/// <see cref="MemoryBasicInformation.State"/>, and
+		/// <see cref="MemoryBasicInformation.Protect"/> are grouped together in a single <see cref="MemoryBasicInformation"/>.
+		/// </summary>
 		/// <param name="startAddress">The virtual address at which the enumeration begins</param>
 		/// <returns>An enumerable collection of memory in this process' virtual address space.</returns>
-		public static IEnumerable<MemoryBasicInformation> EnumerateMemory(nint startAddress = 0)
+		public static IEnumerable<MemoryBasicInformation> EnumerateMemory(nint startAddress)
 		{
 			NativeMethods.GetSystemInfo(out var si);
 
-			if (startAddress < si.MinimumApplicationAddress)
+			if (startAddress.Lt(si.MinimumApplicationAddress))
 				startAddress = si.MinimumApplicationAddress;
 
-			startAddress &= startAddress / (nint)si.PageSize * (nint)si.PageSize;
+			startAddress = startAddress.And(startAddress.Div((nint)si.PageSize).Mul((nint)si.PageSize));
 
-			var mbiSz = Unsafe.SizeOf<MemoryBasicInformation>();
+			var mbiSz = Marshal.SizeOf<MemoryBasicInformation>();
 			do
 			{
 				if (NativeMethods.VirtualQuery(startAddress, out var mbi, mbiSz) != mbiSz)
 					yield break;
 
-				startAddress += mbi.RegionSize;
+				startAddress = startAddress.Add(mbi.RegionSize);
 				yield return mbi;
-			} while (startAddress < si.MaximumApplicationAddress);
+			} while (startAddress.Lt(si.MaximumApplicationAddress));
 		}
 
 		/// <summary>
@@ -45,13 +61,13 @@ namespace InjectDotnet.NativeHelper
 			var minSize = minFreeSize;
 			foreach (var mbi in EnumerateMemory(baseAddress))
 			{
-				if (mbi.State is not MemoryState.MemFree) continue;
-				minFreeSize = mbi.RegionSize - (mbi.BaseAddressRoundedUp - mbi.BaseAddress);
+				if (mbi.State != MemoryState.MemFree) continue;
+				minFreeSize = mbi.RegionSize.Subtract(mbi.BaseAddressRoundedUp.Subtract(mbi.BaseAddress));
 
-				if (minFreeSize > minSize) return mbi.BaseAddressRoundedUp;
+				if (minFreeSize.Gt(minSize)) return mbi.BaseAddressRoundedUp;
 			}
-			minFreeSize = 0;
-			return 0;
+			minFreeSize = IntPtr.Zero;
+			return IntPtr.Zero;
 		}
 
 		/// <summary>
@@ -63,13 +79,16 @@ namespace InjectDotnet.NativeHelper
 		/// <returns>A pointer to the beginning of the free memory block</returns>
 		unsafe public static nint AllocateMemoryNearBase(nint baseAddress)
 		{
-			nint minSize = sizeof(nint);
-			nint allocation = 0;
+			nint minSize = (nint)sizeof(nint);
+			nint allocation = IntPtr.Zero;
 			do
 			{
 				var pHookFn = FirstFreeAddress(baseAddress, ref minSize);
-				if (pHookFn == 0 || minSize == 0 || pHookFn - baseAddress > uint.MaxValue)
+				if (pHookFn == IntPtr.Zero || minSize == IntPtr.Zero)
 					continue;
+
+				if (pHookFn.Subtract(baseAddress).Gt((nint)int.MaxValue))
+					throw new Exception($"Could not allocate memory within range of 0x{baseAddress.ToString("x" + IntPtr.Size)}");
 
 				allocation = NativeMethods.VirtualAlloc(
 					pHookFn,
@@ -79,7 +98,7 @@ namespace InjectDotnet.NativeHelper
 
 				baseAddress = pHookFn;
 
-			} while (allocation == 0);
+			} while (allocation == IntPtr.Zero);
 
 			return allocation;
 		}

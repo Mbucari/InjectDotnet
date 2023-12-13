@@ -1,22 +1,24 @@
 ﻿using System.ComponentModel;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 
-namespace InjectDotnet.NativeHelper.Native;
+#if !NET
+using nint = System.IntPtr;
+#endif
 
-public enum ContextFlags : uint
+namespace InjectDotnet.NativeHelper.Native
 {
-	CONTEXT_i386 = 0x10000,
-	CONTEXT_i486 = 0x10000,   //  same as i386
-	CONTEXT_CONTROL = CONTEXT_i386 | 0x01, // SS:SP, CS:IP, FLAGS, BP
-	CONTEXT_INTEGER = CONTEXT_i386 | 0x02, // AX, BX, CX, DX, SI, DI
-	CONTEXT_SEGMENTS = CONTEXT_i386 | 0x04, // DS, ES, FS, GS
-	CONTEXT_FLOATING_POINT = CONTEXT_i386 | 0x08, // 387 state
-	CONTEXT_DEBUG_REGISTERS = CONTEXT_i386 | 0x10, // DB 0-3,6,7
-	CONTEXT_EXTENDED_REGISTERS = CONTEXT_i386 | 0x20, // cpu specific extensions
-	CONTEXT_FULL = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS,
-	CONTEXT_ALL = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | CONTEXT_EXTENDED_REGISTERS
-}
+	public enum ContextFlags : uint
+	{
+		CONTEXT_i386 = 0x10000,
+		CONTEXT_i486 = 0x10000,   //  same as i386
+		CONTEXT_CONTROL = CONTEXT_i386 | 0x01, // SS:SP, CS:IP, FLAGS, BP
+		CONTEXT_INTEGER = CONTEXT_i386 | 0x02, // AX, BX, CX, DX, SI, DI
+		CONTEXT_SEGMENTS = CONTEXT_i386 | 0x04, // DS, ES, FS, GS
+		CONTEXT_FLOATING_POINT = CONTEXT_i386 | 0x08, // 387 state
+		CONTEXT_DEBUG_REGISTERS = CONTEXT_i386 | 0x10, // DB 0-3,6,7
+		CONTEXT_EXTENDED_REGISTERS = CONTEXT_i386 | 0x20, // cpu specific extensions
+		CONTEXT_FULL = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS,
+		CONTEXT_ALL = CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_SEGMENTS | CONTEXT_FLOATING_POINT | CONTEXT_DEBUG_REGISTERS | CONTEXT_EXTENDED_REGISTERS
+	}
 
 #if X64
 /// <summary>
@@ -28,7 +30,7 @@ public enum ContextFlags : uint
 /// <see cref="Context"/> must be allocated on a 16-byte boundary. The best way to do
 /// this is to allocate unmanaged memory in a new page and cast it to <see cref="Context"/>
 /// </remarks>
-[StructLayout(LayoutKind.Sequential, Pack = 16)]
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 16)]
 public struct Context
 {
 	/// <summary>
@@ -136,7 +138,7 @@ public struct Context
 	public ulong LastExceptionFromRip; /* 4c8 */
 }
 
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
 public unsafe struct XMM_SAVE_AREA32
 {
 	public ushort ControlWord;
@@ -181,8 +183,8 @@ public unsafe struct XMM_SAVE_AREA32
 	private fixed byte Reserved4[96];
 }
 
-[DebuggerDisplay("{ToString(),nq}")]
-[StructLayout(LayoutKind.Sequential)]
+[System.Diagnostics.DebuggerDisplay("{ToString(),nq}")]
+[System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
 public struct M128A
 {
 	public ulong High;
@@ -190,78 +192,79 @@ public struct M128A
 	public override string ToString() => $"0x{High:X}{Low:X}";
 }
 #elif X86
-/// <summary>
-/// 32-bit thread context
-/// </summary>
-unsafe public struct Context
-{
 	/// <summary>
-	/// Get the thread's context.
+	/// 32-bit thread context
 	/// </summary>
-	/// <param name="threadHandle">A handle to the thread whose context is to be retrieved. The handle must have <see cref="ThreadRights.THREAD_GET_CONTEXT"/> access to the thread.</param>
-	/// <param name="flags">A value indicating which portions of the Context structure should be retrieved</param>
-	/// <returns>The thread's context</returns>
-	/// <exception cref="Win32Exception">If failed to get the thread context</exception>
-	public unsafe static Context* GetThreadContext(nint threadHandle, ContextFlags flags = ContextFlags.CONTEXT_ALL)
+	unsafe public struct Context
 	{
-		//Context must be on a 16-byte boundary.
-		var buff = new byte[sizeof(Context) + 8];
-		fixed (byte* b = buff)
+		/// <summary>
+		/// Get the thread's context.
+		/// </summary>
+		/// <param name="threadHandle">A handle to the thread whose context is to be retrieved. The handle must have <see cref="ThreadRights.THREAD_GET_CONTEXT"/> access to the thread.</param>
+		/// <param name="flags">A value indicating which portions of the Context structure should be retrieved</param>
+		/// <returns>The thread's context</returns>
+		/// <exception cref="Win32Exception">If failed to get the thread context</exception>
+		public unsafe static Context* GetThreadContext(nint threadHandle, ContextFlags flags = ContextFlags.CONTEXT_ALL)
 		{
-			var pContext = (Context*)(b + ((int)b & 8));
-			pContext->ContextFlags = ContextFlags.CONTEXT_ALL;
+			//Context must be on a 16-byte boundary.
+			var buff = new byte[sizeof(Context) + 8];
+			fixed (byte* b = buff)
+			{
+				var pContext = (Context*)(b + ((int)b & 8));
+				pContext->ContextFlags = ContextFlags.CONTEXT_ALL;
 
-			if (!NativeMethods.GetThreadContext(threadHandle, pContext))
-				throw new Win32Exception($"{nameof(NativeMethods.GetThreadContext)} failed.");
-			return pContext;
+				if (!NativeMethods.GetThreadContext(threadHandle, pContext))
+					throw new Win32Exception($"{nameof(NativeMethods.GetThreadContext)} failed.");
+				return pContext;
+			}
 		}
+
+		public const int MAXIMUM_SUPPORTED_EXTENSION = 512;
+		public ContextFlags ContextFlags;
+
+		/* These are selected by CONTEXT_DEBUG_REGISTERS */
+		public DebugRegisters Dr;
+
+		/* These are selected by CONTEXT_FLOATING_POINT */
+		public FLOATING_SAVE_AREA FloatSave;
+
+		/* These are selected by CONTEXT_SEGMENTS */
+		public uint SegGs;
+		public uint SegFs;
+		public uint SegEs;
+		public uint SegDs;
+
+		/* These are selected by CONTEXT_INTEGER */
+		public uint Edi;
+		public uint Esi;
+		public uint Ebx;
+		public uint Edx;
+		public uint Ecx;
+		public uint Eax;
+
+		/* These are selected by CONTEXT_CONTROL */
+		public uint Ebp;
+		public nint InstructionPointer;
+		public uint SegCs;
+		public uint EFlags;
+		public uint Esp;
+		public uint SegSs;
+		public fixed byte ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
 	}
 
-	public const int MAXIMUM_SUPPORTED_EXTENSION = 512;
-	public ContextFlags ContextFlags;
-
-	/* These are selected by CONTEXT_DEBUG_REGISTERS */
-	public DebugRegisters Dr;
-
-	/* These are selected by CONTEXT_FLOATING_POINT */
-	public FLOATING_SAVE_AREA FloatSave;
-
-	/* These are selected by CONTEXT_SEGMENTS */
-	public uint SegGs;
-	public uint SegFs;
-	public uint SegEs;
-	public uint SegDs;
-
-	/* These are selected by CONTEXT_INTEGER */
-	public uint Edi;
-	public uint Esi;
-	public uint Ebx;
-	public uint Edx;
-	public uint Ecx;
-	public uint Eax;
-
-	/* These are selected by CONTEXT_CONTROL */
-	public uint Ebp;
-	public nint InstructionPointer;
-	public uint SegCs;
-	public uint EFlags;
-	public uint Esp;
-	public uint SegSs;
-	public fixed byte ExtendedRegisters[MAXIMUM_SUPPORTED_EXTENSION];
-}
-
-public unsafe struct FLOATING_SAVE_AREA
-{
-	private const int SIZE_OF_80387_REGISTERS = 80;
-	public uint ControlWord;
-	public uint StatusWord;
-	public uint TagWord;
-	public uint ErrorOffset;
-	public uint ErrorSelector;
-	public uint DataOffset;
-	public uint DataSelector;
-	public fixed byte RegisterArea[SIZE_OF_80387_REGISTERS];
-	public uint Cr0NpxState;
-}
+	public unsafe struct FLOATING_SAVE_AREA
+	{
+		private const int SIZE_OF_80387_REGISTERS = 80;
+		public uint ControlWord;
+		public uint StatusWord;
+		public uint TagWord;
+		public uint ErrorOffset;
+		public uint ErrorSelector;
+		public uint DataOffset;
+		public uint DataSelector;
+		public fixed byte RegisterArea[SIZE_OF_80387_REGISTERS];
+		public uint Cr0NpxState;
+	}
 
 #endif
+}

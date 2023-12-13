@@ -28,34 +28,35 @@
 
 using System.Runtime.InteropServices;
 
-namespace InjectDotnet.NativeHelper.Minhook;
-
-internal interface IHde
+namespace InjectDotnet.NativeHelper.Minhook
 {
-	byte Opcode { get; }
-	byte Opcode2 { get; }
-	byte Length { get; }
-	byte ModRm { get; }
-	byte ModRm_Reg { get; }
-	Imm Imm { get; }
-	Disp Disp { get; }
-	uint Flags { get; }
-	bool IsError { get; }
-}
+	internal interface IHde
+	{
+		byte Opcode { get; }
+		byte Opcode2 { get; }
+		byte Length { get; }
+		byte ModRm { get; }
+		byte ModRm_Reg { get; }
+		Imm Imm { get; }
+		Disp Disp { get; }
+		uint Flags { get; }
+		bool IsError { get; }
+	}
 
-[StructLayout(LayoutKind.Explicit)]
-internal struct Imm
-{
-	[FieldOffset(0)] public byte imm8;
-	[FieldOffset(0)] public ushort imm16;
-	[FieldOffset(0)] public uint imm32;
-	[FieldOffset(0)] public ulong imm64;
-}
+	[StructLayout(LayoutKind.Explicit)]
+	internal struct Imm
+	{
+		[FieldOffset(0)] public byte imm8;
+		[FieldOffset(0)] public ushort imm16;
+		[FieldOffset(0)] public uint imm32;
+		[FieldOffset(0)] public ulong imm64;
+	}
 
-[StructLayout(LayoutKind.Explicit)]
-internal struct Disp
-{
-	[FieldOffset(0)] public byte disp8;
-	[FieldOffset(0)] public ushort disp16;
-	[FieldOffset(0)] public uint disp32;
+	[StructLayout(LayoutKind.Explicit)]
+	internal struct Disp
+	{
+		[FieldOffset(0)] public byte disp8;
+		[FieldOffset(0)] public ushort disp16;
+		[FieldOffset(0)] public uint disp32;
+	}
 }

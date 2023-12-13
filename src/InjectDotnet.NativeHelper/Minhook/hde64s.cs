@@ -26,513 +26,514 @@
 *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace InjectDotnet.NativeHelper.Minhook;
-
-[StructLayout(LayoutKind.Sequential, Pack = 1)]
-internal struct Hde64s : IHde
+namespace InjectDotnet.NativeHelper.Minhook
 {
-	private byte len;
-	public byte p_rep;
-	public byte p_lock;
-	public byte p_seg;
-	public byte p_66;
-	public byte p_67;
-	public byte rex;
-	public byte rex_w;
-	public byte rex_r;
-	public byte rex_x;
-	public byte rex_b;
-	private byte opcode;
-	private byte opcode2;
-	private byte modrm;
-	public byte modrm_mod;
-	private byte modrm_reg;
-	public byte modrm_rm;
-	public byte sib;
-	public byte sib_scale;
-	public byte sib_index;
-	public byte sib_base;
-	private Imm imm;
-	private Disp disp;
-	private uint flags;
-
-	public readonly byte Opcode => opcode;
-	public readonly byte Length => len;
-	public readonly byte Opcode2 => opcode2;
-	public readonly Imm Imm => imm;
-	public readonly Disp Disp => disp;
-	public readonly byte ModRm => modrm;
-	public readonly byte ModRm_Reg => modrm_reg;
-	public readonly uint Flags => flags;
-	public readonly bool IsError => (flags & F_ERROR) != 0;
-
-	unsafe public static uint Hde64_disasm(byte* code, Hde64s* hs)
+	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	internal struct Hde64s : IHde
 	{
-		byte* hde64_table = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(hde64_table_array));
-		byte x, c = 0, cflags = 0, opcode, pref = 0;
-		byte* p = code, ht = hde64_table;
-		byte m_mod, m_reg, m_rm, disp_size = 0, op64 = 0;
-		bool error_opcode_bool = false, rel32_ok_bool = false, imm16_ok_bool = false;
+		private byte len;
+		public byte p_rep;
+		public byte p_lock;
+		public byte p_seg;
+		public byte p_66;
+		public byte p_67;
+		public byte rex;
+		public byte rex_w;
+		public byte rex_r;
+		public byte rex_x;
+		public byte rex_b;
+		private byte opcode;
+		private byte opcode2;
+		private byte modrm;
+		public byte modrm_mod;
+		private byte modrm_reg;
+		public byte modrm_rm;
+		public byte sib;
+		public byte sib_scale;
+		public byte sib_index;
+		public byte sib_base;
+		private Imm imm;
+		private Disp disp;
+		private uint flags;
 
-		*hs = new Hde64s();
+		public byte Opcode => opcode;
+		public byte Length => len;
+		public byte Opcode2 => opcode2;
+		public Imm Imm => imm;
+		public Disp Disp => disp;
+		public byte ModRm => modrm;
+		public byte ModRm_Reg => modrm_reg;
+		public uint Flags => flags;
+		public bool IsError => (flags & F_ERROR) != 0;
 
-		for (x = 16; x != 0; x--)
-			switch (c = *p++)
+		unsafe public static uint Hde64_disasm(byte* code, Hde64s* hs)
+		{
+			fixed (byte* hde64_table = hde64_table_array)
 			{
-				case 0xf3:
-					hs->p_rep = c;
-					pref |= PRE_F3;
-					break;
-				case 0xf2:
-					hs->p_rep = c;
-					pref |= PRE_F2;
-					break;
-				case 0xf0:
-					hs->p_lock = c;
-					pref |= PRE_LOCK;
-					break;
-				case 0x26:
-				case 0x2e:
-				case 0x36:
-				case 0x3e:
-				case 0x64:
-				case 0x65:
-					hs->p_seg = c;
-					pref |= PRE_SEG;
-					break;
-				case 0x66:
-					hs->p_66 = c;
-					pref |= PRE_66;
-					break;
-				case 0x67:
-					hs->p_67 = c;
-					pref |= PRE_67;
-					break;
-				default:
-					goto pref_done;
-			}
+				byte x, c = 0, cflags = 0, opcode, pref = 0;
+				byte* p = code, ht = hde64_table;
+				byte m_mod, m_reg, m_rm, disp_size = 0, op64 = 0;
+				bool error_opcode_bool = false, rel32_ok_bool = false, imm16_ok_bool = false;
 
-		pref_done:
-		hs->flags = (uint)pref << 23;
+				*hs = new Hde64s();
 
-		if (pref == 0)
-			pref |= PRE_NONE;
-
-		if ((c & 0xf0) == 0x40)
-		{
-			hs->flags |= F_PREFIX_REX;
-			if ((hs->rex_w = (byte)((c & 0xf) >> 3)) != 0 && (*p & 0xf8) == 0xb8)
-				op64++;
-			hs->rex_r = (byte)((c & 7) >> 2);
-			hs->rex_x = (byte)((c & 3) >> 1);
-			hs->rex_b = (byte)(c & 1);
-			if (((c = *p++) & 0xf0) == 0x40)
-			{
-				opcode = c;
-				error_opcode_bool = true;
-				goto error_opcode;
-			}
-		}
-		if ((hs->opcode = c) == 0x0f)
-		{
-			hs->opcode2 = c = *p++;
-			ht += DELTA_OPCODES;
-		}
-		else if (c >= 0xa0 && c <= 0xa3)
-		{
-			op64++;
-			if ((pref & PRE_67) != 0)
-				pref |= PRE_66;
-			else
-			{
-				pref &= unchecked((byte)~PRE_66);
-			}
-		}
-
-		opcode = c;
-
-		cflags = ht[ht[opcode / 4] + opcode % 4];
-
-	error_opcode:
-
-		if (error_opcode_bool || cflags == C_ERROR)
-		{
-			hs->flags |= F_ERROR | F_ERROR_OPCODE;
-			cflags = 0;
-			if ((opcode & -3) == 0x24)
-				cflags++;
-		}
-
-		x = 0;
-		if ((cflags & C_GROUP) != 0)
-		{
-			ushort t;
-			t = *(ushort*)(ht + (cflags & 0x7f));
-			cflags = (byte)t;
-			x = (byte)(t >> 8);
-		}
-
-		if (hs->opcode2 != 0)
-		{
-			ht = hde64_table + DELTA_PREFIXES;
-			if ((ht[ht[opcode / 4] + opcode % 4] & pref) != 0)
-				hs->flags |= F_ERROR | F_ERROR_OPCODE;
-		}
-
-		if ((cflags & C_MODRM) != 0)
-		{
-			hs->flags |= F_MODRM;
-			hs->modrm = c = *p++;
-			hs->modrm_mod = m_mod = (byte)(c >> 6);
-			hs->modrm_rm = m_rm = (byte)(c & 7);
-			hs->modrm_reg = m_reg = (byte)((c & 0x3f) >> 3);
-
-			if (x != 0 && (x << m_reg & 0x80) != 0)
-				hs->flags |= F_ERROR | F_ERROR_OPCODE;
-
-			if (hs->opcode2 == 0 && opcode >= 0xd9 && opcode <= 0xdf)
-			{
-				byte t = (byte)(opcode - 0xd9);
-				if (m_mod == 3)
-				{
-					ht = hde64_table + DELTA_FPU_MODRM + t * 8;
-					t = (byte)(ht[m_reg] << m_rm);
-				}
-				else
-				{
-					ht = hde64_table + DELTA_FPU_REG;
-					t = (byte)(ht[t] << m_reg);
-				}
-				if ((t & 0x80) != 0)
-					hs->flags |= F_ERROR | F_ERROR_OPCODE;
-			}
-
-			if ((pref & PRE_LOCK) != 0)
-			{
-				if (m_mod == 3)
-				{
-					hs->flags |= F_ERROR | F_ERROR_LOCK;
-				}
-				else
-				{
-					byte* table_end, op = (byte*)opcode;
-					if (hs->opcode2 != 0)
+				for (x = 16; x != 0; x--)
+					switch (c = *p++)
 					{
-						ht = hde64_table + DELTA_OP2_LOCK_OK;
-						table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
+						case 0xf3:
+							hs->p_rep = c;
+							pref |= PRE_F3;
+							break;
+						case 0xf2:
+							hs->p_rep = c;
+							pref |= PRE_F2;
+							break;
+						case 0xf0:
+							hs->p_lock = c;
+							pref |= PRE_LOCK;
+							break;
+						case 0x26:
+						case 0x2e:
+						case 0x36:
+						case 0x3e:
+						case 0x64:
+						case 0x65:
+							hs->p_seg = c;
+							pref |= PRE_SEG;
+							break;
+						case 0x66:
+							hs->p_66 = c;
+							pref |= PRE_66;
+							break;
+						case 0x67:
+							hs->p_67 = c;
+							pref |= PRE_67;
+							break;
+						default:
+							goto pref_done;
 					}
+
+				pref_done:
+				hs->flags = (uint)pref << 23;
+
+				if (pref == 0)
+					pref |= PRE_NONE;
+
+				if ((c & 0xf0) == 0x40)
+				{
+					hs->flags |= F_PREFIX_REX;
+					if ((hs->rex_w = (byte)((c & 0xf) >> 3)) != 0 && (*p & 0xf8) == 0xb8)
+						op64++;
+					hs->rex_r = (byte)((c & 7) >> 2);
+					hs->rex_x = (byte)((c & 3) >> 1);
+					hs->rex_b = (byte)(c & 1);
+					if (((c = *p++) & 0xf0) == 0x40)
+					{
+						opcode = c;
+						error_opcode_bool = true;
+						goto error_opcode;
+					}
+				}
+				if ((hs->opcode = c) == 0x0f)
+				{
+					hs->opcode2 = c = *p++;
+					ht += DELTA_OPCODES;
+				}
+				else if (c >= 0xa0 && c <= 0xa3)
+				{
+					op64++;
+					if ((pref & PRE_67) != 0)
+						pref |= PRE_66;
 					else
 					{
-						ht = hde64_table + DELTA_OP_LOCK_OK;
-						table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
-						op = unchecked((byte*)(byte)((int)op & -2));
+						pref &= unchecked((byte)~PRE_66);
 					}
-					for (; ht != table_end; ht++)
-						if (*ht++ == (byte)op)
-						{
-							if ((*ht << m_reg & 0x80) == 0)
-								goto no_lock_error;
-							else
-								break;
-						}
-					hs->flags |= F_ERROR | F_ERROR_LOCK;
-				no_lock_error:
-					;
 				}
-			}
 
-			if (hs->opcode2 != 0)
-			{
-				switch (opcode)
-				{
-					case 0x20:
-					case 0x22:
-						m_mod = 3;
-						if (m_reg > 4 || m_reg == 1)
-							goto error_operand;
-						else
-							goto no_error_operand;
-					case 0x21:
-					case 0x23:
-						m_mod = 3;
-						if (m_reg == 4 || m_reg == 5)
-							goto error_operand;
-						else
-							goto no_error_operand;
-				}
-			}
-			else
-			{
-				switch (opcode)
-				{
-					case 0x8c:
-						if (m_reg > 5)
-							goto error_operand;
-						else
-							goto no_error_operand;
-					case 0x8e:
-						if (m_reg == 1 || m_reg > 5)
-							goto error_operand;
-						else
-							goto no_error_operand;
-				}
-			}
+				opcode = c;
 
-			if (m_mod == 3)
-			{
-				byte* table_end;
+				cflags = ht[ht[opcode / 4] + opcode % 4];
+
+			error_opcode:
+
+				if (error_opcode_bool || cflags == C_ERROR)
+				{
+					hs->flags |= F_ERROR | F_ERROR_OPCODE;
+					cflags = 0;
+					if ((opcode & -3) == 0x24)
+						cflags++;
+				}
+
+				x = 0;
+				if ((cflags & C_GROUP) != 0)
+				{
+					ushort t;
+					t = *(ushort*)(ht + (cflags & 0x7f));
+					cflags = (byte)t;
+					x = (byte)(t >> 8);
+				}
+
 				if (hs->opcode2 != 0)
 				{
-					ht = hde64_table + DELTA_OP2_ONLY_MEM;
-					table_end = ht + hde64_table_array.Length - DELTA_OP2_ONLY_MEM;
+					ht = hde64_table + DELTA_PREFIXES;
+					if ((ht[ht[opcode / 4] + opcode % 4] & pref) != 0)
+						hs->flags |= F_ERROR | F_ERROR_OPCODE;
 				}
-				else
+
+				if ((cflags & C_MODRM) != 0)
 				{
-					ht = hde64_table + DELTA_OP_ONLY_MEM;
-					table_end = ht + DELTA_OP2_ONLY_MEM - DELTA_OP_ONLY_MEM;
-				}
-				for (; ht != table_end; ht += 2)
-					if (*ht++ == opcode)
+					hs->flags |= F_MODRM;
+					hs->modrm = c = *p++;
+					hs->modrm_mod = m_mod = (byte)(c >> 6);
+					hs->modrm_rm = m_rm = (byte)(c & 7);
+					hs->modrm_reg = m_reg = (byte)((c & 0x3f) >> 3);
+
+					if (x != 0 && (x << m_reg & 0x80) != 0)
+						hs->flags |= F_ERROR | F_ERROR_OPCODE;
+
+					if (hs->opcode2 == 0 && opcode >= 0xd9 && opcode <= 0xdf)
 					{
-						if ((*ht++ & pref) != 0 && (*ht << m_reg & 0x80) == 0)
-							goto error_operand;
+						byte t = (byte)(opcode - 0xd9);
+						if (m_mod == 3)
+						{
+							ht = hde64_table + DELTA_FPU_MODRM + t * 8;
+							t = (byte)(ht[m_reg] << m_rm);
+						}
 						else
-							break;
+						{
+							ht = hde64_table + DELTA_FPU_REG;
+							t = (byte)(ht[t] << m_reg);
+						}
+						if ((t & 0x80) != 0)
+							hs->flags |= F_ERROR | F_ERROR_OPCODE;
 					}
-				goto no_error_operand;
-			}
-			else if (hs->opcode2 != 0)
-			{
-				switch (opcode)
-				{
-					case 0x50:
-					case 0xd7:
-					case 0xf7:
-						if ((pref & (PRE_NONE | PRE_66)) != 0)
-							goto error_operand;
-						break;
-					case 0xd6:
-						if ((pref & (PRE_F2 | PRE_F3)) != 0)
-							goto error_operand;
-						break;
-					case 0xc5:
-						goto error_operand;
-				}
-				goto no_error_operand;
-			}
-			else
-				goto no_error_operand;
 
-			error_operand:
-			hs->flags |= F_ERROR | F_ERROR_OPERAND;
-		no_error_operand:
-
-			c = *p++;
-			if (m_reg <= 1)
-			{
-				if (opcode == 0xf6)
-					cflags |= C_IMM8;
-				else if (opcode == 0xf7)
-					cflags |= C_IMM_P66;
-			}
-
-			switch (m_mod)
-			{
-				case 0:
-					if ((pref & PRE_67) != 0)
+					if ((pref & PRE_LOCK) != 0)
 					{
-						if (m_rm == 6)
-							disp_size = 2;
+						if (m_mod == 3)
+						{
+							hs->flags |= F_ERROR | F_ERROR_LOCK;
+						}
+						else
+						{
+							byte* table_end, op = (byte*)opcode;
+							if (hs->opcode2 != 0)
+							{
+								ht = hde64_table + DELTA_OP2_LOCK_OK;
+								table_end = ht + DELTA_OP_ONLY_MEM - DELTA_OP2_LOCK_OK;
+							}
+							else
+							{
+								ht = hde64_table + DELTA_OP_LOCK_OK;
+								table_end = ht + DELTA_OP2_LOCK_OK - DELTA_OP_LOCK_OK;
+								op = unchecked((byte*)(byte)((int)op & -2));
+							}
+							for (; ht != table_end; ht++)
+								if (*ht++ == (byte)op)
+								{
+									if ((*ht << m_reg & 0x80) == 0)
+										goto no_lock_error;
+									else
+										break;
+								}
+							hs->flags |= F_ERROR | F_ERROR_LOCK;
+						no_lock_error:
+							;
+						}
+					}
+
+					if (hs->opcode2 != 0)
+					{
+						switch (opcode)
+						{
+							case 0x20:
+							case 0x22:
+								m_mod = 3;
+								if (m_reg > 4 || m_reg == 1)
+									goto error_operand;
+								else
+									goto no_error_operand;
+							case 0x21:
+							case 0x23:
+								m_mod = 3;
+								if (m_reg == 4 || m_reg == 5)
+									goto error_operand;
+								else
+									goto no_error_operand;
+						}
 					}
 					else
-						if (m_rm == 5)
-						disp_size = 4;
-					break;
-				case 1:
-					disp_size = 1;
-					break;
-				case 2:
-					disp_size = 2;
-					if ((pref & PRE_67) == 0)
-						disp_size <<= 1;
-					break;
-			}
+					{
+						switch (opcode)
+						{
+							case 0x8c:
+								if (m_reg > 5)
+									goto error_operand;
+								else
+									goto no_error_operand;
+							case 0x8e:
+								if (m_reg == 1 || m_reg > 5)
+									goto error_operand;
+								else
+									goto no_error_operand;
+						}
+					}
 
-			if (m_mod != 3 && m_rm == 4)
-			{
-				hs->flags |= F_SIB;
-				p++;
-				hs->sib = c;
-				hs->sib_scale = (byte)(c >> 6);
-				hs->sib_index = (byte)((c & 0x3f) >> 3);
-				if ((hs->sib_base = (byte)(c & 7)) == 5 && (m_mod & 1) == 0)
-					disp_size = 4;
-			}
+					if (m_mod == 3)
+					{
+						byte* table_end;
+						if (hs->opcode2 != 0)
+						{
+							ht = hde64_table + DELTA_OP2_ONLY_MEM;
+							table_end = ht + hde64_table_array.Length - DELTA_OP2_ONLY_MEM;
+						}
+						else
+						{
+							ht = hde64_table + DELTA_OP_ONLY_MEM;
+							table_end = ht + DELTA_OP2_ONLY_MEM - DELTA_OP_ONLY_MEM;
+						}
+						for (; ht != table_end; ht += 2)
+							if (*ht++ == opcode)
+							{
+								if ((*ht++ & pref) != 0 && (*ht << m_reg & 0x80) == 0)
+									goto error_operand;
+								else
+									break;
+							}
+						goto no_error_operand;
+					}
+					else if (hs->opcode2 != 0)
+					{
+						switch (opcode)
+						{
+							case 0x50:
+							case 0xd7:
+							case 0xf7:
+								if ((pref & (PRE_NONE | PRE_66)) != 0)
+									goto error_operand;
+								break;
+							case 0xd6:
+								if ((pref & (PRE_F2 | PRE_F3)) != 0)
+									goto error_operand;
+								break;
+							case 0xc5:
+								goto error_operand;
+						}
+						goto no_error_operand;
+					}
+					else
+						goto no_error_operand;
 
-			p--;
-			switch (disp_size)
-			{
-				case 1:
-					hs->flags |= F_DISP8;
-					hs->disp.disp8 = *p;
-					break;
-				case 2:
-					hs->flags |= F_DISP16;
-					hs->disp.disp16 = *(ushort*)p;
-					break;
-				case 4:
-					hs->flags |= F_DISP32;
-					hs->disp.disp32 = *(uint*)p;
-					break;
-			}
-			p += disp_size;
-		}
-		else if ((pref & PRE_LOCK) != 0)
-			hs->flags |= F_ERROR | F_ERROR_LOCK;
+					error_operand:
+					hs->flags |= F_ERROR | F_ERROR_OPERAND;
+				no_error_operand:
 
-		if ((cflags & C_IMM_P66) != 0)
-		{
-			if ((cflags & C_REL32) != 0)
-			{
-				if ((pref & PRE_66) != 0)
+					c = *p++;
+					if (m_reg <= 1)
+					{
+						if (opcode == 0xf6)
+							cflags |= C_IMM8;
+						else if (opcode == 0xf7)
+							cflags |= C_IMM_P66;
+					}
+
+					switch (m_mod)
+					{
+						case 0:
+							if ((pref & PRE_67) != 0)
+							{
+								if (m_rm == 6)
+									disp_size = 2;
+							}
+							else
+								if (m_rm == 5)
+								disp_size = 4;
+							break;
+						case 1:
+							disp_size = 1;
+							break;
+						case 2:
+							disp_size = 2;
+							if ((pref & PRE_67) == 0)
+								disp_size <<= 1;
+							break;
+					}
+
+					if (m_mod != 3 && m_rm == 4)
+					{
+						hs->flags |= F_SIB;
+						p++;
+						hs->sib = c;
+						hs->sib_scale = (byte)(c >> 6);
+						hs->sib_index = (byte)((c & 0x3f) >> 3);
+						if ((hs->sib_base = (byte)(c & 7)) == 5 && (m_mod & 1) == 0)
+							disp_size = 4;
+					}
+
+					p--;
+					switch (disp_size)
+					{
+						case 1:
+							hs->flags |= F_DISP8;
+							hs->disp.disp8 = *p;
+							break;
+						case 2:
+							hs->flags |= F_DISP16;
+							hs->disp.disp16 = *(ushort*)p;
+							break;
+						case 4:
+							hs->flags |= F_DISP32;
+							hs->disp.disp32 = *(uint*)p;
+							break;
+					}
+					p += disp_size;
+				}
+				else if ((pref & PRE_LOCK) != 0)
+					hs->flags |= F_ERROR | F_ERROR_LOCK;
+
+				if ((cflags & C_IMM_P66) != 0)
 				{
-					hs->flags |= F_IMM16 | F_RELATIVE;
+					if ((cflags & C_REL32) != 0)
+					{
+						if ((pref & PRE_66) != 0)
+						{
+							hs->flags |= F_IMM16 | F_RELATIVE;
+							hs->imm.imm16 = *(ushort*)p;
+							p += 2;
+							goto disasm_done;
+						}
+						rel32_ok_bool = true;
+						goto rel32_ok;
+					}
+					if (op64 != 0)
+					{
+						hs->flags |= F_IMM64;
+						hs->imm.imm64 = *(ulong*)p;
+						p += 8;
+					}
+					else if ((pref & PRE_66) == 0)
+					{
+						hs->flags |= F_IMM32;
+						hs->imm.imm32 = *(uint*)p;
+						p += 4;
+					}
+					else
+					{
+						imm16_ok_bool = true;
+						goto imm16_ok;
+					}
+				}
+
+			imm16_ok:
+				if (imm16_ok_bool || (cflags & C_IMM16) != 0)
+				{
+					hs->flags |= F_IMM16;
 					hs->imm.imm16 = *(ushort*)p;
 					p += 2;
-					goto disasm_done;
 				}
-				rel32_ok_bool = true;
-				goto rel32_ok;
+				if ((cflags & C_IMM8) != 0)
+				{
+					hs->flags |= F_IMM8;
+					hs->imm.imm8 = *p++;
+				}
+
+			rel32_ok:
+				if (rel32_ok_bool || (cflags & C_REL32) != 0)
+				{
+					hs->flags |= F_IMM32 | F_RELATIVE;
+					hs->imm.imm32 = *(uint*)p;
+					p += 4;
+				}
+				else if ((cflags & C_REL8) != 0)
+				{
+					hs->flags |= F_IMM8 | F_RELATIVE;
+					hs->imm.imm8 = *p++;
+				}
+
+			disasm_done:
+
+				if ((hs->len = (byte)(p - code)) > 15)
+				{
+					hs->flags |= F_ERROR | F_ERROR_LENGTH;
+					hs->len = 15;
+				}
+
+				return hs->len;
 			}
-			if (op64 != 0)
-			{
-				hs->flags |= F_IMM64;
-				hs->imm.imm64 = *(ulong*)p;
-				p += 8;
-			}
-			else if ((pref & PRE_66) == 0)
-			{
-				hs->flags |= F_IMM32;
-				hs->imm.imm32 = *(uint*)p;
-				p += 4;
-			}
-			else
-			{
-				imm16_ok_bool = true;
-				goto imm16_ok;
-			}
 		}
 
-	imm16_ok:
-		if (imm16_ok_bool || (cflags & C_IMM16) != 0)
-		{
-			hs->flags |= F_IMM16;
-			hs->imm.imm16 = *(ushort*)p;
-			p += 2;
-		}
-		if ((cflags & C_IMM8) != 0)
-		{
-			hs->flags |= F_IMM8;
-			hs->imm.imm8 = *p++;
-		}
+		#region Constants
+		private const uint F_MODRM = 0x00000001;
+		private const uint F_SIB = 0x00000002;
+		private const uint F_IMM8 = 0x00000004;
+		private const uint F_IMM16 = 0x00000008;
+		private const uint F_IMM32 = 0x00000010;
+		private const uint F_IMM64 = 0x00000020;
+		private const uint F_DISP8 = 0x00000040;
+		private const uint F_DISP16 = 0x00000080;
+		private const uint F_DISP32 = 0x00000100;
+		private const uint F_RELATIVE = 0x00000200;
+		private const uint F_ERROR = 0x00001000;
+		private const uint F_ERROR_OPCODE = 0x00002000;
+		private const uint F_ERROR_LENGTH = 0x00004000;
+		private const uint F_ERROR_LOCK = 0x00008000;
+		private const uint F_ERROR_OPERAND = 0x00010000;
+		private const uint F_PREFIX_REPNZ = 0x01000000;
+		private const uint F_PREFIX_REPX = 0x02000000;
+		private const uint F_PREFIX_REP = 0x03000000;
+		private const uint F_PREFIX_66 = 0x04000000;
+		private const uint F_PREFIX_67 = 0x08000000;
+		private const uint F_PREFIX_LOCK = 0x10000000;
+		private const uint F_PREFIX_SEG = 0x20000000;
+		private const uint F_PREFIX_REX = 0x40000000;
+		private const uint F_PREFIX_ANY = 0x7f000000;
 
-	rel32_ok:
-		if (rel32_ok_bool || (cflags & C_REL32) != 0)
-		{
-			hs->flags |= F_IMM32 | F_RELATIVE;
-			hs->imm.imm32 = *(uint*)p;
-			p += 4;
-		}
-		else if ((cflags & C_REL8) != 0)
-		{
-			hs->flags |= F_IMM8 | F_RELATIVE;
-			hs->imm.imm8 = *p++;
-		}
+		private const byte PREFIX_SEGMENT_CS = 0x2e;
+		private const byte PREFIX_SEGMENT_SS = 0x36;
+		private const byte PREFIX_SEGMENT_DS = 0x3e;
+		private const byte PREFIX_SEGMENT_ES = 0x26;
+		private const byte PREFIX_SEGMENT_FS = 0x64;
+		private const byte PREFIX_SEGMENT_GS = 0x65;
+		private const byte PREFIX_LOCK = 0xf0;
+		private const byte PREFIX_REPNZ = 0xf2;
+		private const byte PREFIX_REPX = 0xf3;
+		private const byte PREFIX_OPERAND_SIZE = 0x66;
+		private const byte PREFIX_ADDRESS_SIZE = 0x67;
+		#endregion
 
-	disasm_done:
+		#region Table
+		private const byte C_NONE = 0x00;
+		private const byte C_MODRM = 0x01;
+		private const byte C_IMM8 = 0x02;
+		private const byte C_IMM16 = 0x04;
+		private const byte C_IMM_P66 = 0x10;
+		private const byte C_REL8 = 0x20;
+		private const byte C_REL32 = 0x40;
+		private const byte C_GROUP = 0x80;
+		private const byte C_ERROR = 0xff;
 
-		if ((hs->len = (byte)(p - code)) > 15)
-		{
-			hs->flags |= F_ERROR | F_ERROR_LENGTH;
-			hs->len = 15;
-		}
+		private const byte PRE_ANY = 0x00;
+		private const byte PRE_NONE = 0x01;
+		private const byte PRE_F2 = 0x02;
+		private const byte PRE_F3 = 0x04;
+		private const byte PRE_66 = 0x08;
+		private const byte PRE_67 = 0x10;
+		private const byte PRE_LOCK = 0x20;
+		private const byte PRE_SEG = 0x40;
+		private const byte PRE_ALL = 0xff;
 
-		return hs->len;
-	}
+		private const ushort DELTA_OPCODES = 0x4a;
+		private const ushort DELTA_FPU_REG = 0xfd;
+		private const ushort DELTA_FPU_MODRM = 0x104;
+		private const ushort DELTA_PREFIXES = 0x13c;
+		private const ushort DELTA_OP_LOCK_OK = 0x1ae;
+		private const ushort DELTA_OP2_LOCK_OK = 0x1c6;
+		private const ushort DELTA_OP_ONLY_MEM = 0x1d8;
+		private const ushort DELTA_OP2_ONLY_MEM = 0x1e7;
 
-	#region Conostants
-	private const uint F_MODRM = 0x00000001;
-	private const uint F_SIB = 0x00000002;
-	private const uint F_IMM8 = 0x00000004;
-	private const uint F_IMM16 = 0x00000008;
-	private const uint F_IMM32 = 0x00000010;
-	private const uint F_IMM64 = 0x00000020;
-	private const uint F_DISP8 = 0x00000040;
-	private const uint F_DISP16 = 0x00000080;
-	private const uint F_DISP32 = 0x00000100;
-	private const uint F_RELATIVE = 0x00000200;
-	private const uint F_ERROR = 0x00001000;
-	private const uint F_ERROR_OPCODE = 0x00002000;
-	private const uint F_ERROR_LENGTH = 0x00004000;
-	private const uint F_ERROR_LOCK = 0x00008000;
-	private const uint F_ERROR_OPERAND = 0x00010000;
-	private const uint F_PREFIX_REPNZ = 0x01000000;
-	private const uint F_PREFIX_REPX = 0x02000000;
-	private const uint F_PREFIX_REP = 0x03000000;
-	private const uint F_PREFIX_66 = 0x04000000;
-	private const uint F_PREFIX_67 = 0x08000000;
-	private const uint F_PREFIX_LOCK = 0x10000000;
-	private const uint F_PREFIX_SEG = 0x20000000;
-	private const uint F_PREFIX_REX = 0x40000000;
-	private const uint F_PREFIX_ANY = 0x7f000000;
-
-	private const byte PREFIX_SEGMENT_CS = 0x2e;
-	private const byte PREFIX_SEGMENT_SS = 0x36;
-	private const byte PREFIX_SEGMENT_DS = 0x3e;
-	private const byte PREFIX_SEGMENT_ES = 0x26;
-	private const byte PREFIX_SEGMENT_FS = 0x64;
-	private const byte PREFIX_SEGMENT_GS = 0x65;
-	private const byte PREFIX_LOCK = 0xf0;
-	private const byte PREFIX_REPNZ = 0xf2;
-	private const byte PREFIX_REPX = 0xf3;
-	private const byte PREFIX_OPERAND_SIZE = 0x66;
-	private const byte PREFIX_ADDRESS_SIZE = 0x67;
-	#endregion
-
-	#region Table
-	private const byte C_NONE = 0x00;
-	private const byte C_MODRM = 0x01;
-	private const byte C_IMM8 = 0x02;
-	private const byte C_IMM16 = 0x04;
-	private const byte C_IMM_P66 = 0x10;
-	private const byte C_REL8 = 0x20;
-	private const byte C_REL32 = 0x40;
-	private const byte C_GROUP = 0x80;
-	private const byte C_ERROR = 0xff;
-
-	private const byte PRE_ANY = 0x00;
-	private const byte PRE_NONE = 0x01;
-	private const byte PRE_F2 = 0x02;
-	private const byte PRE_F3 = 0x04;
-	private const byte PRE_66 = 0x08;
-	private const byte PRE_67 = 0x10;
-	private const byte PRE_LOCK = 0x20;
-	private const byte PRE_SEG = 0x40;
-	private const byte PRE_ALL = 0xff;
-
-	private const ushort DELTA_OPCODES = 0x4a;
-	private const ushort DELTA_FPU_REG = 0xfd;
-	private const ushort DELTA_FPU_MODRM = 0x104;
-	private const ushort DELTA_PREFIXES = 0x13c;
-	private const ushort DELTA_OP_LOCK_OK = 0x1ae;
-	private const ushort DELTA_OP2_LOCK_OK = 0x1c6;
-	private const ushort DELTA_OP_ONLY_MEM = 0x1d8;
-	private const ushort DELTA_OP2_ONLY_MEM = 0x1e7;
-
-	private static readonly byte[] hde64_table_array = {
+		private static readonly byte[] hde64_table_array = {
   0xa5,0xaa,0xa5,0xb8,0xa5,0xaa,0xa5,0xaa,0xa5,0xb8,0xa5,0xb8,0xa5,0xb8,0xa5,
   0xb8,0xc0,0xc0,0xc0,0xc0,0xc0,0xc0,0xc0,0xc0,0xac,0xc0,0xcc,0xc0,0xa1,0xa1,
   0xa1,0xa1,0xb1,0xa5,0xa5,0xa6,0xc0,0xc0,0xd7,0xda,0xe0,0xc0,0xe4,0xc0,0xea,
@@ -570,5 +571,6 @@ internal struct Hde64s : IHde
   0x00,0xb4,0xff,0x00,0xb5,0xff,0x00,0xc3,0x01,0x00,0xc7,0xff,0xbf,0xe7,0x08,
   0x00,0xf0,0x02,0x00
 };
-	#endregion
+		#endregion
+	}
 }

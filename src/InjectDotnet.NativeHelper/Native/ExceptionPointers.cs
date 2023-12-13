@@ -1,17 +1,22 @@
-﻿namespace InjectDotnet.NativeHelper.Native;
+﻿#if !NET
+using nint = System.IntPtr;
+#endif
 
-public unsafe struct ExceptionRecord
+namespace InjectDotnet.NativeHelper.Native
 {
-	public uint ExceptionCode;
-	public uint ExceptionFlags;
-	public ExceptionRecord* NextRecord;
-	public void* ExceptionAddress;
-	public uint NumberParameters;
-	public nint ExceptionInformation;
-}
+	public unsafe struct ExceptionRecord
+	{
+		public uint ExceptionCode;
+		public uint ExceptionFlags;
+		public ExceptionRecord* NextRecord;
+		public void* ExceptionAddress;
+		public uint NumberParameters;
+		public nint ExceptionInformation;
+	}
 
-public unsafe struct ExceptionPointers
-{
-	public ExceptionRecord* ExceptionRecord;
-	public Context* ContextRecord;
+	public unsafe struct ExceptionPointers
+	{
+		public ExceptionRecord* ExceptionRecord;
+		public Context* ContextRecord;
+	}
 }
