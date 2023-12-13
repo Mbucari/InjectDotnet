@@ -1,6 +1,6 @@
 # InjectDotnet
 
-Inject a .NET Core dll into a native Win32 or Win64 process. InjectDotnet is a library, not a standalone application. This allows developers/hackers to pass any argument to the injected dll, not just a string. There are two complementary libraries:
+Inject a .NET/.NET Framework dll into a native Win32 or Win64 process. InjectDotnet is a library, not a standalone application. This allows developers/hackers to pass any argument to the injected dll, not just a string. There are two complementary libraries:
 
 - **InjectDotnet**: Injects a managed dll into a native process.
 - **InjectDotnet.NativeHelper**: Referenced by the injected dll and provides methods for hooking native functions.
@@ -32,7 +32,7 @@ target.Inject(
 
 To inject a .NET Framework Dll, use the overload that doesn't have the `runtimeconfig` parameter.
 
-You may optionally wait for bootstrap method to return to receive it's return code, and the injector supports passing structs with additional data to the injected dll (see the samples prokjects).
+You may optionally wait for bootstrap method to return to receive it's return code, and the injector supports passing structs with additional data to the injected dll (see the samples projects).
 
 ### Injecting into .NET Targets
 **InjectDotnet** supports injecting into managed target processes, but there are some limitations.
@@ -42,11 +42,11 @@ You may optionally wait for bootstrap method to return to receive it's return co
 4. Injecting into self-contained apps is supported, but single-file apps are not supported. Self-contained apps are more strict about which frameworks can be loaded. Portable apps can run code from older frameworks, but self-contained apps can only run code from the framework version that published it.
 5. Injecting into a new managed process at startup is not supported.
 
-If `Inject()` fails to load the CLR in the target process, it returns the [host fxr error code](https://github.com/dotnet/runtime/blob/main/docs/design/features/host-error-codes.md). `Inject()` must be called with `waitForReturn: true` for the error code to be returned.
+If `Inject()` fails to load the CLR in the target process, it returns the [host-fxr error code](https://github.com/dotnet/runtime/blob/main/docs/design/features/host-error-codes.md) or the [.NET Framework error code](https://github.com/tpn/winsdk-10/blob/master/Include/10.0.14393.0/um/CorError.h). `Inject()` must be called with `waitForReturn: true` for the error code to be returned.
 
-## Inject Into a New Process at Startup
+## Inject Into a New, Unmanaged Process at Startup
 
-**InjectDotnet** supports injecting managed Dlls at the entry point of a process using its built-in debugger.
+**InjectDotnet** supports injecting managed Dlls at the entry point of an unmanaged process using its built-in debugger.
 
 It's as simple as the following example.
 
