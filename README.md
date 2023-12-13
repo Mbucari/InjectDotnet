@@ -30,13 +30,15 @@ target.Inject(
 	"this is an argument passed to the injected dll's Bootstrap() method");
 ```
 
+To inject a .NET Framework Dll, use the overload that doesn't have the `runtimeconfig` parameter.
+
 You may optionally wait for bootstrap method to return to receive it's return code, and the injector supports passing structs with additional data to the injected dll (see the samples prokjects).
 
 ### Injecting into .NET Targets
 **InjectDotnet** supports injecting into managed target processes, but there are some limitations.
 1. The injected Dll's required frameworks must be compatible with the frameworks loaded by the runtime already in the target process. For instance, you cannot inject a .NET 7 dll into a .NET 6 target process.
-2. When injected into a .NET Core process, the injected Dll will be loaded into that process' AppDomain.
-3. You can inject into a .NET Framwork process, but the injected .NET Core Dll cannot access the target's AppDomain.
+2. When injected into a .NET process, the injected Dll will be loaded into that process' AppDomain. .NET Framework Dlls injected into .NET Framework processes are loaded into the default AppDomain only.
+3. You can inject .NET Dlls into .NET Framework processes and vice versa, but the frameworks will not be able to communicate (e.g. no reflection).
 4. Injecting into self-contained apps is supported, but single-file apps are not supported. Self-contained apps are more strict about which frameworks can be loaded. Portable apps can run code from older frameworks, but self-contained apps can only run code from the framework version that published it.
 5. Injecting into a new managed process at startup is not supported.
 
@@ -60,6 +62,9 @@ debugger.InjectStartup(
 
 await debugger.ResumeProcessAsync();
 ```
+
+To inject a .NET Framework Dll, use the overload that doesn't have the `runtimeconfig` parameter.
+
 The debugger supports all [win32 debug events](https://learn.microsoft.com/en-us/windows/win32/api/minwinbase/ns-minwinbase-debug_event#members), and you may use them to, for example, receive data from the injected dll via [OutputDebugString](https://learn.microsoft.com/en-us/windows/win32/api/debugapi/nf-debugapi-outputdebugstringw).
 
 ## Hooking Native Functions
