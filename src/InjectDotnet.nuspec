@@ -1,7 +1,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata minClientVersion="3.2">
 		<id>InjectDotnet</id>
-		<version>0.3.3</version>
+		<version>0.4.0</version>
 		<description>Librarty for injecting .NETCoreAppDlls into native processes</description>
 		<authors>MBucari</authors>
 		<repository type="git" url="https://github.com/Mbucari/InjectDotnet.git" branch="master" />
@@ -13,22 +13,33 @@
 		<license type="file">LICENSE.txt</license>
 		<dependencies>
 			<group targetFramework="net6.0-windows7.0" />
+			<group targetFramework="net8.0-windows7.0" />
 		</dependencies>
     </metadata>
 	<dependencies>
 		<group targetFramework="net6.0-windows7.0">
-			<dependency id="Microsoft.SourceLink.GitHub" version="1.1.1" />
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
+		</group>
+		<group targetFramework="net8.0-windows7.0">
+			<dependency id="Microsoft.SourceLink.GitHub" version="8.0.0" />
 		</group>
 	</dependencies>
-    <files>
-        <!-- .NET 6 Windows -->
-        <file src="InjectDotnet.props" target="build\net6.0-windows7.0" />
-        <file src="_._" target="lib\net6.0-windows7.0" />
-        
-        <file src="InjectDotnet\bin\x86\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x86" />
-        <file src="InjectDotnet\bin\x64\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x64" />		
-		
+    <files>		
 		<file src="..\README.md" target="docs\" />
 		<file src="..\LICENSE.txt" target="LICENSE.txt" />
+		
+        <!-- .NET 6 Windows -->
+        
+        <file src="InjectDotnet\bin\x86\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x86" />
+        <file src="InjectDotnet\bin\x64\Release\net6.0-windows7.0\InjectDotnet.dll" target="build\net6.0-windows7.0\x64" />
+        <file src="InjectDotnet.props" target="build\net6.0-windows7.0" />
+        <file src="_._" target="lib\net6.0-windows7.0" />
+		
+        <!-- .NET 6 Windows -->
+        
+        <file src="InjectDotnet\bin\x86\Release\net8.0-windows7.0\InjectDotnet.dll" target="build\net8.0-windows7.0\x86" />
+        <file src="InjectDotnet\bin\x64\Release\net8.0-windows7.0\InjectDotnet.dll" target="build\net8.0-windows7.0\x64" />
+        <file src="InjectDotnet.props" target="build\net8.0-windows7.0" />
+        <file src="_._" target="lib\net8.0-windows7.0" />
     </files>
 </package>

@@ -72,13 +72,6 @@ public class UserBreakpoint
 	{
 		if (Enabled) return true;
 
-		if (!(Accessor.Query(Address).Protect
-			is MemoryProtection.Execute
-			or MemoryProtection.ExecuteRead
-			or MemoryProtection.ExecuteReadWrite
-			or MemoryProtection.ExecuteWriteCopy))
-			return false;
-
 		if (OriginalCode is null)
 		{
 			var original = new byte[1];

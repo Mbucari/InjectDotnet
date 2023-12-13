@@ -23,6 +23,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InjectAtStartup", "sample\I
 		{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8} = {6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InjectedFrameworkDll", "sample\InjectedFrameworkDll\InjectedFrameworkDll.csproj", "{0FE6B918-4453-4959-A098-499AAE30E8DA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +73,12 @@ Global
 		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x64.Build.0 = Release|x64
 		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x86.ActiveCfg = Release|x86
 		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD}.Release|x86.Build.0 = Release|x86
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Debug|x64.ActiveCfg = Debug|x64
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Debug|x64.Build.0 = Debug|x64
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Debug|x86.ActiveCfg = Debug|x86
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Debug|x86.Build.0 = Debug|x86
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Release|x64.ActiveCfg = Release|x64
+		{0FE6B918-4453-4959-A098-499AAE30E8DA}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -81,6 +89,7 @@ Global
 		{6BA631E2-1CC6-4DB7-948A-33DEDAB5AAB8} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
 		{A8B1E62E-D287-4974-81FE-90F9CD4D3BDD} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
 		{D7119DCA-50F6-4AF9-B1E0-3415D6D827FD} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
+		{0FE6B918-4453-4959-A098-499AAE30E8DA} = {C42930AA-918A-4A25-9091-29EF5A58FADE}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5B066C6C-9A90-43CE-B253-4A80FBEBE70E}

@@ -7,10 +7,12 @@ using System.Runtime.InteropServices;
 
 namespace InjectDotnet;
 
+#pragma warning disable CS9191 // The 'ref' modifier for an argument corresponding to 'in' parameter is equivalent to 'in'. Consider using 'in' instead.
 public static class ProcessExtensions
 {
 	private const string LOADLIBRARY = "LoadLibraryW";
 	private static readonly nint LoadLibrary_Offset;
+
 
 	static ProcessExtensions()
 	{

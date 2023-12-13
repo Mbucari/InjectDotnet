@@ -38,6 +38,8 @@ internal class Program
 		};
 
 		//Injection must occur before calling ResumeProcessAsync()
+		//NOTE: This particular example doesn't work well with HxD64.exe and will usually cause it to crash.
+		//I think it has to do with the threads that are created by Bootstrap()
 		debugger.InjectStartup(
 			"InjectedDll.runtimeconfig.json",
 			"InjectedDll.dll",
@@ -45,6 +47,16 @@ internal class Program
 			"Bootstrap",
 			arg,
 			detatchAfterInjected: false);
+
+		/* .NET Framework Injection
+		debugger.InjectStartup(
+			"InjectedFrameworkDll.dll",
+			"InjectedFrameworkDll.Demo",
+			"Bootstrap",
+			"This is an argument!",
+			detatchAfterInjected: true);
+		*/
+
 		//NOTE: By not detatching after injecting, the Hardware breakpoint hook
 		//will be caught by the debugger. For it to work we need to not handle
 		//the single step event that occurs at kernel32.WriteFile.

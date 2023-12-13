@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Title>InjectDotnet</Title>
-	<Version>0.3.3</Version>
+	<Version>0.4.0</Version>
 	<Authors>MrGneissGuy</Authors>
     <Description>Inject .NET Core Dlls into x86/x64 native processes</Description>
     <ProjectUrl>https://github.com/Mbucari/InjectDotnet</ProjectUrl>
@@ -10,7 +10,7 @@
     <RepositoryUrl>https://github.com/Mbucari/InjectDotnet</RepositoryUrl>
 	<PackageProjectUrl>https://github.com/Mbucari/InjectDotnet</PackageProjectUrl>
 	<RepositoryUrl>https://github.com/Mbucari/InjectDotnet</RepositoryUrl>
-    <TargetFramework>net6.0-windows7.0</TargetFramework>
+    <TargetFrameworks>net8.0-windows7.0;net6.0-windows7.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <Platforms>x64;x86</Platforms>
@@ -30,6 +30,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 </Project>

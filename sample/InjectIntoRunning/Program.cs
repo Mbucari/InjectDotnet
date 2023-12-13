@@ -58,6 +58,15 @@ internal class Program
 			arg,
 			waitForReturn: true);
 
+		/* .NET Framework Injection
+		var result = target.Inject(
+			"InjectedFrameworkDll.dll",
+			"InjectedFrameworkDll.Demo",
+			"Bootstrap",
+			"This is an argument!",
+			waitForReturn: true);
+		*/
+
 		Console.WriteLine($"InjectedDll.HookDemo.Bootstrap() returned 0x{result:x}");
 	}
 }

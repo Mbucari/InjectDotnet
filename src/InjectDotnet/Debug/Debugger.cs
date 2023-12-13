@@ -95,7 +95,7 @@ public class Debugger
 	/// <summary>
 	/// Indicates whether execution has passed the system breakpoint.
 	/// </summary>
-	public bool HitEntryPoint { get; private set; }
+	public bool HasHitEntryPoint { get; private set; }
 	/// <summary>
 	/// Indicates whether execution has passed the debugee's entry point.
 	/// </summary>
@@ -230,7 +230,7 @@ public class Debugger
 						true,
 						CreateProcessFlags.DEBUG_PROCESS,
 						0,
-						Environment.CurrentDirectory,
+						null,
 						startupInfo,
 						ProcessInfo);
 
@@ -437,16 +437,11 @@ public class Debugger
 
 	protected virtual bool OnCreateProcess(DebugEvent debugEvent)
 	{
-		using var args = new CreateProcessEventArgs(MemoryAccess, debugEvent);
-
-		if (debugEvent.ProcessId == ProcessInfo.ProcessId)
-			GetOrCreateBreakpoint(EntryPoint, nameof(BreakType.EntryPoint))
-				.TryEnable();
-
 		if (CreateProcess is null)
 			return true;
 		else
 		{
+			using var args = new CreateProcessEventArgs(MemoryAccess, debugEvent);
 			CreateProcess?.Invoke(this, args);
 			return args.Continue;
 		}
@@ -479,6 +474,10 @@ public class Debugger
 
 		if (!HitSystemBreakpoint)
 		{
+			//Enable the entry point breakpoint
+			GetOrCreateBreakpoint(EntryPoint, nameof(BreakType.EntryPoint))
+				.TryEnable();
+
 			//The first breakpoint encountered after create process is the ntdll int3 (System Breakpoint)
 			//The first breakpoint encountered after attaching to a process signals completion of attachment
 			HitSystemBreakpoint = true;
@@ -493,7 +492,7 @@ public class Debugger
 			if (debugEvent.u.Exception.ExceptionRecord.ExceptionAddress == EntryPoint)
 			{
 				//memory breakpoint at entry point
-				HitEntryPoint = true;
+				HasHitEntryPoint = true;
 				Breakpoints.Remove(bp);
 				using var args = new BreakpointEventArgs(BreakType.EntryPoint, debugEvent);
 				args.Context.InstructionPointer--;
